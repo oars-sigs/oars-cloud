@@ -89,6 +89,7 @@ type Endpoint struct {
 	Created   int64                  `json:"created,omitempty"`
 	Config    map[string]interface{} `json:"config,omitempty"`
 	NodeInfo  interface{}            `json:"hostInfo,omitempty"`
+	Updated   int64                  `json:"updated,omitempty"`
 }
 
 //String ...

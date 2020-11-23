@@ -30,7 +30,7 @@
             <td>{{ item.hostInfo.host.kernelVersion }}</td>
             <td>{{ item.hostInfo.logicalCores }}</td>
             <td>{{ (item.hostInfo.memory/1024/1024/1024).toFixed(2) }}Gi</td>
-            <td>{{ item.status }}</td>
+            <td>{{ item.state }}</td>
           </tr>
         </tbody>
       </template>

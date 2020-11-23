@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/docker/docker/client"
-	"github.com/sirupsen/logrus"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/agent/metrics"
@@ -32,32 +31,11 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 		store: store,
 		node:  node,
 	}
-	d.initNode()
+	go d.initNode()
 	go d.run()
 	go d.watch()
 	go d.dnsServer()
 	go metrics.Start(cli, node)
 	err = d.reg()
 	return err
-}
-
-func (d *daemon) initNode() {
-	nodeInfo, err := metrics.GetNodeInfo()
-	if err != nil {
-		logrus.Error(err)
-	}
-	endpoint := &core.Endpoint{
-		Namespace: "system",
-		Service:   "node",
-		Status:    "running",
-		Hostname:  d.node.Hostname,
-		HostIP:    d.node.IP,
-		Port:      d.node.Port,
-		NodeInfo:  nodeInfo,
-	}
-	err = d.putEndPoint(endpoint)
-	if err != nil {
-		logrus.Error(err)
-		os.Exit(-1)
-	}
 }

@@ -3,10 +3,12 @@ package command
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/config"
+	"github.com/oars-sigs/oars-cloud/pkg/controller"
 	"github.com/oars-sigs/oars-cloud/pkg/etcd"
 	"github.com/oars-sigs/oars-cloud/pkg/server"
 	"github.com/oars-sigs/oars-cloud/pkg/services/admin"
@@ -30,11 +32,19 @@ var serverCmd = &cobra.Command{
 			log.Error(err)
 			os.Exit(-1)
 		}
+
+		controllerCh := make(chan struct{})
+		go controller.Start(store, controllerCh)
 		mgr := &core.APIManager{
 			Cfg:   cfg,
 			Admin: admin.New(store),
 		}
-		server.Start(mgr)
-
+		go server.Start(mgr)
+		sigc := make(chan os.Signal)
+		signal.Notify(sigc, os.Interrupt)
+		select {
+		case <-sigc:
+			controllerCh <- struct{}{}
+		}
 	},
 }

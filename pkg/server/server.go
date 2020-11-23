@@ -10,12 +10,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/server/routers"
+	"github.com/oars-sigs/oars-cloud/ui"
 )
 
 func Start(mgr *core.APIManager) error {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	routers.NewV1(r, mgr)
+	r.GET("/", gin.WrapH(http.FileServer(ui.New())))
+	r.GET("/app.js", gin.WrapH(http.FileServer(ui.New())))
+	r.GET("/app.css", gin.WrapH(http.FileServer(ui.New())))
 
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", mgr.Cfg.Server.Port),

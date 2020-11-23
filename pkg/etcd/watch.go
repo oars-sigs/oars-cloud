@@ -2,7 +2,6 @@ package etcd
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/oars-sigs/oars-cloud/core"
@@ -38,7 +37,6 @@ func (s *Storage) Watch(ctx context.Context, key string, updateCh chan core.Watc
 					PrevKV: kv,
 					KV:     kv,
 				}
-				fmt.Println(watch)
 				updateCh <- watch
 			}
 		}
