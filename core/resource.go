@@ -49,16 +49,14 @@ func (svc *Service) ParseTpl(hostname string, values map[string]interface{}) err
 		if err != nil {
 			return err
 		}
-		endpointValues := make(map[string]interface{})
+		vars := ContainerValues{
+			Global: values,
+		}
 		for _, e := range svc.Endpoints {
 			if e.Hostname == hostname {
-				endpointValues = e.Config
+				vars.Endpoint = e
 				break
 			}
-		}
-		vars := ContainerValues{
-			Global:   values,
-			Endpoint: endpointValues,
 		}
 		var b bytes.Buffer
 		err = tmpl.Execute(&b, vars)

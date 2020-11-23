@@ -67,5 +67,5 @@ func (e *StrSlice) UnmarshalJSON(b []byte) error {
 //ContainerValues 容器自定义配置参数
 type ContainerValues struct {
 	Global   map[string]interface{}
-	Endpoint map[string]interface{}
+	Endpoint Endpoint
 }

@@ -183,7 +183,7 @@ func (d *daemon) syncDockerSvc() error {
 	for _, svc := range addList {
 		endpoint := d.getEndpointByContainerName(d.containerName(svc))
 		endpoint.State = "creating"
-		err = d.putEndPoint(endpoint)
+		d.putEndPoint(endpoint)
 		err := d.Create(ctx, svc)
 		if err != nil {
 			logrus.Error(err)
