@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"os"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
@@ -42,6 +41,5 @@ func (d *daemon) putNode() {
 	err = d.putEndPoint(endpoint)
 	if err != nil {
 		logrus.Error(err)
-		os.Exit(-1)
 	}
 }

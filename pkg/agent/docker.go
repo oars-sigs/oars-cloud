@@ -35,7 +35,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 		})
 	}
 	for k, v := range svc.Docker.ConfigMap {
-		cfgPath := d.node.WorkDir + "/configmap/" + svc.Namespace + "/" + svc.Name + "/" + k
+		cfgPath := d.node.WorkDir + "/configmap/" + svc.Namespace + "/" + svc.Name + "/" + strings.TrimPrefix(k, "/")
 		err := os.MkdirAll(filepath.Dir(cfgPath), 0755)
 		if err != nil {
 			return err
