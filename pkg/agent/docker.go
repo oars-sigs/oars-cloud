@@ -50,7 +50,9 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 			Type:   mount.Type("bind"),
 		})
 	}
-	//d.node.WorkDir
+	if svc.Docker.Port == nil {
+		svc.Docker.Port = new(core.ContainerPort)
+	}
 	if svc.Docker.Port.ContainerPort == 0 {
 		port, err := getFreePort()
 		if err != nil {
@@ -67,6 +69,9 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 	port := fmt.Sprintf("SERVICE_PORT=%d", svc.Docker.Port.ContainerPort)
 	svc.Docker.Environment = append(svc.Docker.Environment, port)
 
+	if svc.Docker.Resources == nil {
+		svc.Docker.Resources = new(core.ContainerResource)
+	}
 	cfg := &container.Config{
 		Image:        svc.Docker.Image,
 		AttachStdout: true,
@@ -78,52 +83,73 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 			"serviceAddress": d.serviceAddress(svc),
 			"servicePort":    fmt.Sprintf("%d", svc.Docker.Port.ContainerPort),
 		},
+		Entrypoint: strslice.StrSlice(svc.Docker.Entrypoint),
+		StopSignal: svc.Docker.StopSignal,
+		WorkingDir: svc.Docker.WorkingDir,
 	}
+	netMode := "host"
+	if svc.Docker.NetworkMode != "" {
+		netMode = svc.Docker.NetworkMode
+	}
+
 	hostCfg := &container.HostConfig{
 		RestartPolicy: container.RestartPolicy{
 			Name: svc.Docker.Restart,
 		},
-		NetworkMode: "host",
+		NetworkMode: container.NetworkMode(netMode),
 		Mounts:      mounts,
 		DNS:         []string{"127.0.0.1"},
 		Resources: container.Resources{
 			Memory:   svc.Docker.Resources.Memory * 1024,
 			CPUQuota: int64(svc.Docker.Resources.CPU * float64(100000)),
 		},
+		CapAdd:      strslice.StrSlice(svc.Docker.CapAdd),
+		CapDrop:     strslice.StrSlice(svc.Docker.CapDrop),
+		ExtraHosts:  svc.Docker.ExtraHosts,
+		Privileged:  svc.Docker.Privileged,
+		SecurityOpt: svc.Docker.SecurityOpt,
+		PidMode:     container.PidMode(svc.Docker.Pid),
+		Sysctls:     svc.Docker.Sysctls,
 	}
 
 	hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
-
-	imgs, err := d.c.ImageList(ctx, types.ImageListOptions{})
-	if err != nil {
-		return err
+	if svc.Docker.ImagePullPolicy == "" {
+		svc.Docker.ImagePullPolicy = core.ImagePullIfNotPresent
 	}
-	imgExist := false
-	for _, img := range imgs {
-		for _, tag := range img.RepoTags {
-			if tag == svc.Docker.Image {
-				imgExist = true
+	if svc.Docker.ImagePullPolicy == core.ImagePullAlways || svc.Docker.ImagePullPolicy == core.ImagePullIfNotPresent {
+		pullFlag := true
+		if svc.Docker.ImagePullPolicy == core.ImagePullIfNotPresent {
+			imgs, err := d.c.ImageList(ctx, types.ImageListOptions{})
+			if err != nil {
+				return err
+			}
+			imgExist := false
+			for _, img := range imgs {
+				for _, tag := range img.RepoTags {
+					if tag == svc.Docker.Image {
+						imgExist = true
+					}
+				}
+			}
+			pullFlag = !imgExist
+		}
+		if pullFlag {
+			distributionRef, err := reference.ParseNormalizedNamed(svc.Docker.Image)
+			if err != nil {
+				return err
+			}
+			fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{})
+			if err != nil {
+				return err
+			}
+			defer fs.Close()
+			_, err = d.c.ImageLoad(ctx, fs, false)
+			if err != nil {
+				return err
 			}
 		}
 	}
 
-	if !imgExist {
-		distributionRef, err := reference.ParseNormalizedNamed(svc.Docker.Image)
-		if err != nil {
-			return err
-		}
-		fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{})
-		if err != nil {
-			return err
-		}
-		defer fs.Close()
-		_, err = d.c.ImageLoad(ctx, fs, false)
-		if err != nil {
-			return err
-		}
-	}
-
-	//netCfg := &network.NetworkingConfig{}
 	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Docker.Name)
 	go func() {
 		err = d.Start(ctx, ct.ID)
@@ -167,7 +193,6 @@ func (d *daemon) List(ctx context.Context) ([]types.Container, error) {
 
 func (d *daemon) Restart(ctx context.Context, id string) error {
 	timeout := 30 * time.Second
-	fmt.Println(id)
 	return d.c.ContainerRestart(ctx, id, &timeout)
 }
 
@@ -186,4 +211,15 @@ func (d *daemon) Log(ctx context.Context, id, tail, since string) (string, error
 		return "", err
 	}
 	return string(data), nil
+}
+
+var (
+	errNotFound = errors.New("No such container")
+)
+
+func (d *daemon) dockerError(err error) error {
+	if strings.Contains(err.Error(), "No such container") {
+		return errNotFound
+	}
+	return err
 }

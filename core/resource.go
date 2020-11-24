@@ -8,7 +8,10 @@ import (
 
 //Namespace 命名空间
 type Namespace struct {
-	Name string `json:"name"`
+	Version string `json:"version"`
+	Name    string `json:"name"`
+	Created int64  `json:"created,omitempty"`
+	Updated int64  `json:"updated,omitempty"`
 }
 
 //String ...
@@ -24,12 +27,15 @@ func (ns *Namespace) Parse(s string) error {
 
 //Service 服务
 type Service struct {
+	Version   string           `json:"version"`
 	Namespace string           `json:"namespace"`
 	Name      string           `json:"name"`
 	Kind      string           `json:"kind"`
 	Endpoints []Endpoint       `json:"endpoints"`
 	Docker    ContainerService `json:"docker,omitempty"`
 	RuntimeID string           `json:"-"`
+	Created   int64            `json:"created,omitempty"`
+	Updated   int64            `json:"updated,omitempty"`
 }
 
 //String ...
@@ -75,6 +81,7 @@ func (svc *Service) ParseTpl(hostname string, values map[string]interface{}) err
 
 //Endpoint 端点
 type Endpoint struct {
+	Version   string                 `json:"version"`
 	ID        string                 `json:"id,omitempty"`
 	Name      string                 `json:"name,omitempty"`
 	Namespace string                 `json:"namespace,omitempty"`
@@ -84,9 +91,9 @@ type Endpoint struct {
 	Port      int                    `json:"port,omitempty"`
 	Hostname  string                 `json:"hostname,omitempty"`
 	HostIP    string                 `json:"hostIP,omitempty"`
-	Created   int64                  `json:"created,omitempty"`
 	Config    map[string]interface{} `json:"config,omitempty"`
 	NodeInfo  interface{}            `json:"hostInfo,omitempty"`
+	Created   int64                  `json:"created,omitempty"`
 	Updated   int64                  `json:"updated,omitempty"`
 }
 
@@ -110,10 +117,13 @@ type EndpointLogOpt struct {
 
 //Method 方法
 type Method struct {
+	Version     string `json:"version"`
 	Namespace   string `json:"namespace"`
 	ServiceName string `json:"serviceName"`
 	Name        string `json:"name"`
 	Kind        string `json:"kind"`
+	Created     int64  `json:"created,omitempty"`
+	Updated     int64  `json:"updated,omitempty"`
 }
 
 //String ...

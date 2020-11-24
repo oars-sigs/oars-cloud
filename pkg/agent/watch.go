@@ -60,6 +60,9 @@ func (d *daemon) actionWatch(kv core.KV, put bool) {
 				svc.ParseTpl(d.node.Hostname, nil)
 				svc.Docker.Name = d.containerName(svc)
 				d.dockerSvc.Store(d.serviceName(svc), svc)
+				endpoint := d.getEndpointByContainerName(svc.Docker.Name)
+				endpoint.State = "scheduled"
+				d.putEndPoint(endpoint)
 			}
 			return
 		}
@@ -102,7 +105,7 @@ func (d *daemon) syncDockerSvc() error {
 		return err
 	}
 
-	delList := make([]string, 0)
+	delList := make([]*core.Endpoint, 0)
 	for _, cn := range cs {
 		if !strings.HasPrefix(cn.Names[0], "/oars_") {
 			continue
@@ -119,13 +122,9 @@ func (d *daemon) syncDockerSvc() error {
 			return true
 		})
 		if !exist {
-			delList = append(delList, cn.ID)
-			//删除endpoint
 			endpoint := d.getEndpointByContainerName(cname)
-			err := d.deleteEndPoint(endpoint)
-			if err != nil {
-				logrus.Error(err)
-			}
+			endpoint.ID = cn.ID
+			delList = append(delList, endpoint)
 		}
 
 		if exist {
@@ -171,19 +170,37 @@ func (d *daemon) syncDockerSvc() error {
 		return true
 	})
 
+	ignoreCreates := make([]*core.Endpoint, 0)
 	//删除容器
-	for _, id := range delList {
-		err := d.Remove(ctx, id)
+	for _, endpoint := range delList {
+		err := d.Remove(ctx, endpoint.ID)
+		if err != nil {
+			if d.dockerError(err) != errNotFound {
+				logrus.Error(err)
+				ignoreCreates = append(ignoreCreates, endpoint)
+				continue
+			}
+		}
+
+		err = d.deleteEndPoint(endpoint)
 		if err != nil {
 			logrus.Error(err)
 		}
+
 	}
 
 	//创建容器
 	for _, svc := range addList {
+		for _, oldendpoint := range ignoreCreates {
+			if oldendpoint.Service == svc.Name && oldendpoint.Namespace == svc.Namespace {
+				endpoint := d.getEndpointByContainerName(d.containerName(svc))
+				endpoint.State = "pedding"
+				endpoint.Status = "waiting old endpoint removed"
+				d.putEndPoint(endpoint)
+				continue
+			}
+		}
 		endpoint := d.getEndpointByContainerName(d.containerName(svc))
-		endpoint.State = "creating"
-		d.putEndPoint(endpoint)
 		err := d.Create(ctx, svc)
 		if err != nil {
 			logrus.Error(err)

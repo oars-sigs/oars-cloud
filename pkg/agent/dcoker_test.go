@@ -21,7 +21,7 @@ func TestDocker(t *testing.T) {
 	ctx := context.Background()
 	//d.ImagePull(context.Background())
 	//l, err := d.List(context.Background())
-	l, err := d.Log(ctx, "a97a38a0a704aa919f750735cabceca6f6bdd535f1fdf327be01cedf93c6bccb", "", "")
-	t.Log(l, err)
+	err = d.Remove(ctx, "a97a38a0a704aa919f750735cabceca6f6bdd535f1fdf327be01cedf93c6bccb")
+	t.Log(err)
 	//New()
 }

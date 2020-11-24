@@ -4,19 +4,39 @@ import "encoding/json"
 
 //ContainerService 容器服务
 type ContainerService struct {
-	Name        string            `json:"-"`
-	Image       string            `json:"image,omitempty"`
-	Volumes     []string          `json:"volumes,omitempty"`
-	DependsOn   []string          `json:"dependsOn,omitempty"`
-	Environment []string          `json:"environment,omitempty"`
-	Restart     string            `json:"restart,omitempty"`
-	Command     StrSlice          `json:"command,omitempty"`
-	Shell       StrSlice          `json:"shell,omitempty"`
-	User        string            `json:"user,omitempty"`
-	Port        ContainerPort     `json:"port,omitempty"`
-	Resources   ContainerResource `json:"resource,omitempty"`
-	ConfigMap   map[string]string `json:"configmap,omitempty"`
+	Name            string                 `json:"-"`
+	Image           string                 `json:"image,omitempty"`
+	Volumes         []string               `json:"volumes,omitempty"`
+	DependsOn       []string               `json:"depends_on,omitempty"`
+	Environment     []string               `json:"environment,omitempty"`
+	Restart         string                 `json:"restart,omitempty"`
+	Command         StrSlice               `json:"command,omitempty"`
+	Shell           StrSlice               `json:"shell,omitempty"`
+	User            string                 `json:"user,omitempty"`
+	Port            *ContainerPort         `json:"port,omitempty"`
+	Resources       *ContainerResource     `json:"resource,omitempty"`
+	CapAdd          StrSlice               `json:"cap_add,omitempty"`
+	CapDrop         StrSlice               `json:"cap_drop,omitempty"`
+	Devices         []string               `json:"devices,omitempty"`
+	Entrypoint      StrSlice               `json:"entrypoint,omitempty"`
+	ExtraHosts      []string               `json:"extra_hosts,omitempty"`
+	NetworkMode     string                 `json:"network_mode,omitempty"` //默认host network
+	SecurityOpt     []string               `json:"security_opt,omitempty"`
+	StopSignal      string                 `json:"stop_signal,omitempty"`
+	Sysctls         map[string]string      `json:"sysctls,omitempty"`
+	Ulimits         map[string]interface{} `json:"ulimits,omitempty"` //未实现
+	Pid             string                 `json:"pid,omitempty"`
+	Privileged      bool                   `json:"privileged,omitempty"`
+	WorkingDir      string                 `json:"working_dir,omitempty"`
+	ImagePullPolicy string                 `json:"imagePullPolicy,omitempty"`
+	ConfigMap       map[string]string      `json:"configmap,omitempty"`
 }
+
+var (
+	ImagePullAlways       = "Always"
+	ImagePullNever        = "Never"
+	ImagePullIfNotPresent = "IfNotPresent"
+)
 
 //String ...
 func (svc *ContainerService) String() string {
