@@ -33,12 +33,14 @@ func (d *daemon) dnsHandle(w dns.ResponseWriter, req *dns.Msg) {
 	domain := q.Name
 	dom := strings.TrimSuffix(domain, "DHCP\\ HOST.")
 	dom = strings.TrimSuffix(dom, ".")
-	if q.Qtype == dns.TypeA {
+	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		addrs := make([]string, 0)
 		d.endpointCache.Range(func(k, v interface{}) bool {
 			if endpoint, ok := v.(*core.Endpoint); ok {
-				if endpoint.Service+"."+endpoint.Namespace == dom {
-					addrs = append(addrs, endpoint.HostIP)
+				if endpoint.State == "running" {
+					if endpoint.Service+"."+endpoint.Namespace == dom {
+						addrs = append(addrs, endpoint.HostIP)
+					}
 				}
 			}
 			return true
@@ -68,7 +70,7 @@ func (d *daemon) dnsHandle(w dns.ResponseWriter, req *dns.Msg) {
 		m.Answer = make([]dns.RR, 0)
 		for _, addr := range addrs {
 			rr := new(dns.A)
-			rr.Hdr = dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 86400}
+			rr.Hdr = dns.RR_Header{Name: domain, Rrtype: q.Qtype, Class: dns.ClassINET, Ttl: 86400}
 			rr.A = net.ParseIP(addr)
 			m.Answer = append(m.Answer, rr)
 		}
