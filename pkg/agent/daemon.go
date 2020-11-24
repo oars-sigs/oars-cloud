@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"os"
 	"sync"
 
 	"github.com/docker/docker/client"
@@ -21,7 +20,6 @@ type daemon struct {
 
 //Start ...
 func Start(store core.KVStore, node core.NodeConfig) error {
-	os.Setenv("DOCKER_HOST", "tcp://127.0.0.1:2375")
 	cli, err := client.NewEnvClient()
 	if err != nil {
 		return err
