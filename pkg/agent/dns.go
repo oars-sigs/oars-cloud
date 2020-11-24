@@ -70,7 +70,7 @@ func (d *daemon) dnsHandle(w dns.ResponseWriter, req *dns.Msg) {
 		m.Answer = make([]dns.RR, 0)
 		for _, addr := range addrs {
 			rr := new(dns.A)
-			rr.Hdr = dns.RR_Header{Name: domain, Rrtype: q.Qtype, Class: dns.ClassINET, Ttl: 86400}
+			rr.Hdr = dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 86400}
 			rr.A = net.ParseIP(addr)
 			m.Answer = append(m.Answer, rr)
 		}
