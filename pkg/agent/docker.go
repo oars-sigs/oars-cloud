@@ -74,27 +74,8 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 	if svc.Docker.Resources == nil {
 		svc.Docker.Resources = new(core.ContainerResource)
 	}
-	cfg := &container.Config{
-		Image:        svc.Docker.Image,
-		AttachStdout: true,
-		AttachStderr: true,
-		Env:          svc.Docker.Environment,
-		Cmd:          strslice.StrSlice(svc.Docker.Command),
-		Shell:        strslice.StrSlice(svc.Docker.Shell),
-		Labels: map[string]string{
-			"serviceAddress": d.serviceAddress(svc),
-			"servicePort":    fmt.Sprintf("%d", svc.Docker.Port.ContainerPort),
-		},
-		Entrypoint: strslice.StrSlice(svc.Docker.Entrypoint),
-		StopSignal: svc.Docker.StopSignal,
-		WorkingDir: svc.Docker.WorkingDir,
-	}
-	netMode := "host"
-	if svc.Docker.NetworkMode != "" {
-		netMode = svc.Docker.NetworkMode
-	}
-
 	ports := make(nat.PortMap)
+	portSet := make(nat.PortSet)
 	for _, p := range svc.Docker.Ports {
 		portStrs := strings.Split(p, ":")
 		if len(portStrs) < 2 || len(portStrs) > 3 {
@@ -115,6 +96,31 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 				HostPort: hostPort,
 			},
 		}
+		portSet[nat.Port(containerPort)] = struct{}{}
+	}
+	for _, expose := range svc.Docker.Expose {
+		portSet[nat.Port(expose)] = struct{}{}
+	}
+	cfg := &container.Config{
+		Image:        svc.Docker.Image,
+		AttachStdout: true,
+		AttachStderr: true,
+		Env:          svc.Docker.Environment,
+		Cmd:          strslice.StrSlice(svc.Docker.Command),
+		Shell:        strslice.StrSlice(svc.Docker.Shell),
+		Labels: map[string]string{
+			"serviceAddress": d.serviceAddress(svc),
+			"servicePort":    fmt.Sprintf("%d", svc.Docker.Port.ContainerPort),
+		},
+		Entrypoint:   strslice.StrSlice(svc.Docker.Entrypoint),
+		StopSignal:   svc.Docker.StopSignal,
+		WorkingDir:   svc.Docker.WorkingDir,
+		ExposedPorts: portSet,
+	}
+
+	netMode := "host"
+	if svc.Docker.NetworkMode != "" {
+		netMode = svc.Docker.NetworkMode
 	}
 
 	hostCfg := &container.HostConfig{

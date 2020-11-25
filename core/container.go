@@ -31,6 +31,7 @@ type ContainerService struct {
 	ImagePullPolicy string                 `json:"imagePullPolicy,omitempty"`
 	ConfigMap       map[string]string      `json:"configmap,omitempty"`
 	Ports           []string               `json:"ports,omitempty"`
+	Expose          []string               `json:"expose,omitempty"`
 }
 
 var (
