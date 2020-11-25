@@ -30,6 +30,7 @@ type ContainerService struct {
 	WorkingDir      string                 `json:"working_dir,omitempty"`
 	ImagePullPolicy string                 `json:"imagePullPolicy,omitempty"`
 	ConfigMap       map[string]string      `json:"configmap,omitempty"`
+	Ports           []string               `json:"ports,omitempty"`
 }
 
 var (

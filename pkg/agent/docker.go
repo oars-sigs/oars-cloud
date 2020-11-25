@@ -15,6 +15,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
+	"github.com/docker/go-connections/nat"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/oars-sigs/oars-cloud/core"
@@ -92,6 +94,29 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 		netMode = svc.Docker.NetworkMode
 	}
 
+	ports := make(nat.PortMap)
+	for _, p := range svc.Docker.Ports {
+		portStrs := strings.Split(p, ":")
+		if len(portStrs) < 2 || len(portStrs) > 3 {
+			continue
+		}
+		hostPort := portStrs[0]
+		containerPort := portStrs[1]
+		hostIP := "0.0.0.0"
+		if len(portStrs) == 3 {
+			hostIP = portStrs[0]
+			hostPort = portStrs[1]
+			containerPort = portStrs[2]
+		}
+
+		ports[nat.Port(containerPort)] = []nat.PortBinding{
+			{
+				HostIP:   hostIP,
+				HostPort: hostPort,
+			},
+		}
+	}
+
 	hostCfg := &container.HostConfig{
 		RestartPolicy: container.RestartPolicy{
 			Name: svc.Docker.Restart,
@@ -103,13 +128,14 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 			Memory:   svc.Docker.Resources.Memory * 1024,
 			CPUQuota: int64(svc.Docker.Resources.CPU * float64(100000)),
 		},
-		CapAdd:      strslice.StrSlice(svc.Docker.CapAdd),
-		CapDrop:     strslice.StrSlice(svc.Docker.CapDrop),
-		ExtraHosts:  svc.Docker.ExtraHosts,
-		Privileged:  svc.Docker.Privileged,
-		SecurityOpt: svc.Docker.SecurityOpt,
-		PidMode:     container.PidMode(svc.Docker.Pid),
-		Sysctls:     svc.Docker.Sysctls,
+		CapAdd:       strslice.StrSlice(svc.Docker.CapAdd),
+		CapDrop:      strslice.StrSlice(svc.Docker.CapDrop),
+		ExtraHosts:   svc.Docker.ExtraHosts,
+		Privileged:   svc.Docker.Privileged,
+		SecurityOpt:  svc.Docker.SecurityOpt,
+		PidMode:      container.PidMode(svc.Docker.Pid),
+		Sysctls:      svc.Docker.Sysctls,
+		PortBindings: ports,
 	}
 
 	hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
