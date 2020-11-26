@@ -71,3 +71,6 @@ func (d *daemon) getEndpointByContainerName(s string) *core.Endpoint {
 func (d *daemon) getCacheEndpointKey(endpoint *core.Endpoint) string {
 	return endpoint.Namespace + "." + endpoint.Service + "@" + endpoint.Hostname
 }
+func (d *daemon) getCacheEndpointKeyBySvc(svc *core.Service) string {
+	return svc.Namespace + "." + svc.Name + "@" + d.node.Hostname
+}

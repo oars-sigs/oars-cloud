@@ -48,7 +48,7 @@ func (svc *Service) Parse(s string) error {
 	return json.Unmarshal([]byte(s), svc)
 }
 
-func (svc *Service) ParseTpl(hostname string, values map[string]interface{}) error {
+func (svc *Service) ParseTpl(endpoint Endpoint, values map[string]interface{}) error {
 	if svc.Kind == "docker" {
 		tmpl := template.New("tpl")
 		tmpl, err := tmpl.Parse(svc.Docker.String())
@@ -56,13 +56,8 @@ func (svc *Service) ParseTpl(hostname string, values map[string]interface{}) err
 			return err
 		}
 		vars := ContainerValues{
-			Global: values,
-		}
-		for _, e := range svc.Endpoints {
-			if e.Hostname == hostname {
-				vars.Endpoint = e
-				break
-			}
+			Global:   values,
+			Endpoint: endpoint,
 		}
 		var b bytes.Buffer
 		err = tmpl.Execute(&b, vars)
