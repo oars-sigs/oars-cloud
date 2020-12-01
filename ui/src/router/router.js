@@ -4,6 +4,7 @@ import Index from '@/pages/index/index'
 import Setting from '@/pages/setting/index'
 import Service from '@/pages/service/index'
 import Endpoint from '@/pages/service/endpoint' 
+import EndpointExec from '@/pages/service/exec' 
 import Namespace from '@/pages/namespace/index'
 import Node from '@/pages/node/index'
 
@@ -56,6 +57,14 @@ let router = new Router({
       path: '/endpoint',
       name: 'Endpoint',
       component: Endpoint,
+      meta:{
+        title: '端点'
+      }
+    },
+    {
+      path: '/exec',
+      name: 'EndpointExec',
+      component: EndpointExec,
       meta:{
         title: '端点'
       }

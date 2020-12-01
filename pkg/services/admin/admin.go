@@ -47,6 +47,8 @@ func (s *service) Call(ctx context.Context, resource, action string, args interf
 		r = s.StopEndPoint(args)
 	case "endpoint.log":
 		r = s.GetEndPointLog(args)
+	case "endpoint.exec":
+		r = s.ExecEndPoint(ctx, args)
 	default:
 		r = e.MethodNotFoundMethod()
 	}

@@ -266,6 +266,18 @@ export default {
             // _that.logs="sss<br/>sss"
           });
           break;
+        case "shell":{
+          let queryParam = {
+            hostname:  this.actionParam.args.hostname,     
+            id: this.actionParam.args.id, 
+            name: this.actionParam.args.name, 
+          }
+          this.$router.push({ 
+            path:'/exec',  
+            query:queryParam,
+          });
+          break;
+        }
       }
     },
   },

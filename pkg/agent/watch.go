@@ -59,7 +59,10 @@ func (d *daemon) actionWatch(kv core.KV, put bool) {
 			case "docker":
 				if endinf, ok := d.endpointCache.Load(d.getCacheEndpointKeyBySvc(svc)); ok {
 					endp := endinf.(*core.Endpoint)
-					svc.ParseTpl(*endp, nil)
+					err := svc.ParseTpl(*endp, nil)
+					if err != nil {
+						logrus.Error(err)
+					}
 				}
 				svc.Docker.Name = d.containerName(svc)
 				d.dockerSvc.Store(d.serviceName(svc), svc)

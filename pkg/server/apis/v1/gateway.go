@@ -37,3 +37,11 @@ func (c *GatewayController) Gateway(ctx *gin.Context) {
 	}
 	ctx.JSON(200, e.MethodNotFoundError())
 }
+
+func (c *GatewayController) Exec(ctx *gin.Context) {
+	var reply core.APIReply
+	err := c.Mgr.Admin.Call(ctx, "endpoint", "exec", nil, &reply)
+	if err != nil {
+		return
+	}
+}

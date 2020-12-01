@@ -244,6 +244,30 @@ func (d *daemon) Log(ctx context.Context, id, tail, since string) (string, error
 	}
 	return string(data), nil
 }
+func (d *daemon) Exec(id string, cmd string) (types.HijackedResponse, error) {
+	ctx := context.Background()
+	resp := types.HijackedResponse{}
+	opts := types.ExecConfig{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		Cmd:          strings.Split(cmd, " "),
+		Detach:       false,
+	}
+	idResp, err := d.c.ContainerExecCreate(ctx, id, opts)
+	if err != nil {
+		return resp, err
+	}
+	resp, err = d.c.ContainerExecAttach(ctx, idResp.ID, types.ExecStartCheck{
+		Detach: false,
+		Tty:    true,
+	})
+	if err != nil {
+		return resp, err
+	}
+	return resp, err
+}
 
 var (
 	errNotFound = errors.New("No such container")
