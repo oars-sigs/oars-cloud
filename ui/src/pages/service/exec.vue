@@ -41,11 +41,18 @@ export default {
   },
   methods: {
     init: function () {
+      const height = window.innerHeight - 160;
+      const width = window.innerWidth - 256;
+      let cols = parseInt(width/9, 10);
       let hostname= this.$route.query.hostname;
       let id= this.$route.query.id;
       this.navs.push({text:hostname})
       this.navs.push({text:this.$route.query.name})
-      let term = new Terminal();
+      let term = new Terminal({
+        cursorBlink: true,
+        rows: parseInt(height/17, 10),
+        cols: cols,
+      });
       this.term=term
       let terminalContainer = document.getElementById("terminal");
       const fitAddon = new FitAddon();
@@ -53,6 +60,7 @@ export default {
       this.term.open(terminalContainer);
       fitAddon.fit();
       this.term.focus();
+      this.term.scrollToBottom();
       let ws = new WebSocket(`ws://${window.location.host}/api/exec/${hostname}/${id}` );
       this.ws=ws
       this.ws.binaryType = "arraybuffer";

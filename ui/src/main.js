@@ -5,18 +5,17 @@ import Vuetify from 'vuetify';
 import 'vuetify/dist/vuetify.min.css';
 import Message from './components/Message/index.js'
 import { fetch } from "@/utils/request";
+import App from './App.vue';
+import router from './router/router'
+import {store} from './store'
 
 Vue.prototype.$message = Message
 Vue.prototype.$call = fetch
 Vue.use(Vuetify);
 
-import App from './App.vue';
-
 Vue.config.productionTip = false;
 Vue.config.devtools = true;
 
-
-import router from './router/router'
 router.beforeEach((to, from, next) => {
 	if (to.meta.title) {
 		document.title = to.meta.title
@@ -27,6 +26,7 @@ router.beforeEach((to, from, next) => {
 
 new Vue({
 	router,
+	store,
 	vuetify: new Vuetify({
 		icons: {
 			iconfont: 'mdi'

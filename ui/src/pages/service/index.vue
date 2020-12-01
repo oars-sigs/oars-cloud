@@ -258,7 +258,10 @@ export default {
           ns.push(element.name);
         });
         _that.namespaces = ns;
-        _that.actionParam.args.namespace = ns[0];
+        if (!_that.$store.state.currentNamespace){
+           _that.$store.commit('SetCurrentNamespace',ns[0]);
+        }
+        _that.actionParam.args.namespace = _that.$store.state.currentNamespace;
         _that.list();
       });
     },
@@ -285,6 +288,7 @@ export default {
      
       switch (this.actionParam.key) {
         case "list":
+          _that.$store.commit('SetCurrentNamespace',_that.actionParam.args.namespace);
           this.overlay = true;
           _that.list();
           break;

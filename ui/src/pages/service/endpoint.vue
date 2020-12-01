@@ -43,7 +43,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in endpoints" :key="item.hostname">
+          <tr v-for="item in endpoints" :key="item.id">
             <td>{{ item.name }}</td>
             <td>{{ item.namespace }}</td>
             <td>{{ item.service }}</td>
@@ -123,9 +123,6 @@
 
 <script>
 import { formatDate } from "../../utils/formatDate.js";
-//import { Terminal } from "xterm";
-//import { FitAddon } from "xterm-addon-fit";
-import "xterm/css/xterm.css";
 export default {
   data() {
     return {
@@ -177,10 +174,12 @@ export default {
   },
   filters: {
     formatT(time) {
-      time = time * 1000;
-      let date = new Date(time);
-      console.log(new Date(time));
-      return formatDate(date, "yyyy-MM-dd hh:mm");
+      if (time){
+        time = time * 1000;
+        let date = new Date(time);
+        return formatDate(date, "yyyy-MM-dd hh:mm");
+      }
+      return "--";
     },
   },
   created() {
@@ -208,12 +207,16 @@ export default {
           ns.push(element.name);
         });
         _that.namespaces = ns;
-        _that.namespace = ns[0];
+        if (!_that.$store.state.currentNamespace){
+           _that.$store.commit('SetCurrentNamespace',ns[0]);
+        }
+        _that.namespace = _that.$store.state.currentNamespace;
         _that.listService();
       });
     },
     listService: function () {
       let _that = this;
+      _that.$store.commit('SetCurrentNamespace',this.namespace);
       this.$call("system.admin.service.get", {
         namespace: this.namespace,
       }).then((resp) => {
