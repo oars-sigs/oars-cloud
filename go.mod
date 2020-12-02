@@ -10,6 +10,7 @@ require (
 	github.com/docker/docker v0.7.3-0.20190111153827-295413c9d0e1
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.3.3 // indirect
+	github.com/envoyproxy/go-control-plane v0.9.7
 	github.com/gin-gonic/gin v1.6.3
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/gorilla/websocket v1.4.2
@@ -24,4 +25,5 @@ require (
 	github.com/spf13/cobra v1.1.1
 	go.etcd.io/etcd v3.3.25+incompatible
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
+	google.golang.org/grpc v1.27.0
 )

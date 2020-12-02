@@ -127,6 +127,73 @@ func (m *Method) String() string {
 	return string(d)
 }
 
+//Parse ...
 func (m *Method) Parse(s string) error {
 	return json.Unmarshal([]byte(s), m)
+}
+
+//IngressListener 入口 Listener
+type IngressListener struct {
+	Version string `json:"version"`
+	Name    string `json:"name"`
+	Port    int    `json:"port"`
+	Created int64  `json:"created"`
+	Updated int64  `json:"updated"`
+}
+
+//String ...
+func (l *IngressListener) String() string {
+	d, _ := json.Marshal(l)
+	return string(d)
+}
+
+//Parse ...
+func (l *IngressListener) Parse(s string) error {
+	return json.Unmarshal([]byte(s), l)
+}
+
+//Ingress 入口
+type Ingress struct {
+	Version  string        `json:"version"`
+	Name     string        `json:"name"`
+	Listener string        `json:"listener"`
+	Rules    []IngressRule `json:"rules"`
+	Created  int64         `json:"created"`
+	Updated  int64         `json:"updated"`
+}
+
+//String ...
+func (ingress *Ingress) String() string {
+	d, _ := json.Marshal(ingress)
+	return string(d)
+}
+
+//Parse ...
+func (ingress *Ingress) Parse(s string) error {
+	return json.Unmarshal([]byte(s), ingress)
+}
+
+//IngressRule Ingress规则
+type IngressRule struct {
+	Host string      `json:"host"`
+	HTTP IngressHTTP `json:"http"`
+}
+
+//IngressHTTP http ingress
+type IngressHTTP struct {
+	Paths []IngressPath `json:"path"`
+}
+
+//IngressPath ingress path
+type IngressPath struct {
+	Path    string            `json:"path"`
+	Backend IngressBackend    `json:"backend"`
+	Config  map[string]string `json:"config,omitempty"`
+}
+
+//IngressBackend ingress backend
+type IngressBackend struct {
+	Namespace   string `json:"namespace"`
+	ServiceName string `json:"seriveName"`
+	ServicePort int    `json:"servicePort"`
 }

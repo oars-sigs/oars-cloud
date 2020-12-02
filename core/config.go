@@ -2,9 +2,10 @@ package core
 
 //Config 配置
 type Config struct {
-	Server ServerConfig
-	Etcd   EtcdConfig
-	Node   NodeConfig
+	Server  ServerConfig
+	Etcd    EtcdConfig
+	Node    NodeConfig
+	Ingress IngressConfig
 }
 
 //ServerConfig 服务端配置
@@ -13,6 +14,7 @@ type ServerConfig struct {
 	TLS  TLSConfig
 }
 
+//TLSConfig TLS 配置
 type TLSConfig struct {
 	Enabled  bool   `envconfig:"SERVER_TLS_ENABLED"`
 	CAFile   string `envconfig:"SERVER_TLS_CAFILE"`
@@ -30,6 +32,7 @@ type EtcdConfig struct {
 	TrustedCAFile string   `envconfig:"ETCD_CA_FILE"`
 }
 
+//NodeConfig 节点配置
 type NodeConfig struct {
 	Hostname    string   `envconfig:"NODE_HOSTNAME"`
 	IP          string   `envconfig:"NODE_IP"`
@@ -37,4 +40,9 @@ type NodeConfig struct {
 	UpDNS       []string `envconfig:"NODE_UPSTREAN_DNS"`
 	MetricsPort int      `envconfig:"NODE_METRUCSPort" default:"8803"`
 	WorkDir     string   `envconfig:"NODE_WORKDIR" default:"/opt/oars/woker"`
+}
+
+//IngressConfig ingress 配置
+type IngressConfig struct {
+	XDSPort int `envconfig:"INGRESS_XDS_PORT" default:"8804"`
 }
