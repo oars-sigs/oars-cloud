@@ -154,12 +154,13 @@ func (l *IngressListener) Parse(s string) error {
 
 //Ingress 入口
 type Ingress struct {
-	Version  string        `json:"version"`
-	Name     string        `json:"name"`
-	Listener string        `json:"listener"`
-	Rules    []IngressRule `json:"rules"`
-	Created  int64         `json:"created"`
-	Updated  int64         `json:"updated"`
+	Version   string        `json:"version"`
+	Name      string        `json:"name"`
+	Namespace string        `json:"namespace"`
+	Listener  string        `json:"listener"`
+	Rules     []IngressRule `json:"rules"`
+	Created   int64         `json:"created"`
+	Updated   int64         `json:"updated"`
 }
 
 //String ...
@@ -193,7 +194,6 @@ type IngressPath struct {
 
 //IngressBackend ingress backend
 type IngressBackend struct {
-	Namespace   string `json:"namespace"`
 	ServiceName string `json:"seriveName"`
 	ServicePort int    `json:"servicePort"`
 }

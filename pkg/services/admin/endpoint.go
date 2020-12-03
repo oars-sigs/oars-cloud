@@ -15,6 +15,22 @@ import (
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 )
 
+func (s *service) regEndpoint(ctx context.Context, action string, args interface{}) *core.APIReply {
+	switch action {
+	case "get":
+		return s.GetEndPoint(args)
+	case "restart":
+		return s.RestartEndPoint(args)
+	case "stop":
+		return s.StopEndPoint(args)
+	case "log":
+		return s.GetEndPointLog(args)
+	case "exec":
+		return s.ExecEndPoint(ctx, args)
+	}
+	return e.MethodNotFoundMethod()
+}
+
 func (s *service) GetEndPoint(args interface{}) *core.APIReply {
 	var endpoint core.Endpoint
 	err := unmarshalArgs(args, &endpoint)

@@ -6,11 +6,17 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/oars-sigs/oars-cloud/core"
 
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	endpointservice "github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3"
@@ -18,20 +24,24 @@ import (
 	routeservice "github.com/envoyproxy/go-control-plane/envoy/service/route/v3"
 	runtimeservice "github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3"
 	secretservice "github.com/envoyproxy/go-control-plane/envoy/service/secret/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	testv3 "github.com/envoyproxy/go-control-plane/pkg/test/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
 type ingressController struct {
-	store      core.KVStore
-	cfg        *core.Config
-	ecache     sync.Map
-	icache     sync.Map
-	classCache sync.Map
-	snapshot   cachev3.SnapshotCache
+	store         core.KVStore
+	cfg           *core.Config
+	ecache        sync.Map
+	icache        sync.Map
+	listenerCache sync.Map
+	snapshot      cachev3.SnapshotCache
+	version       int
 }
 
 func (c *ingressController) run(stopCh <-chan struct{}) error {
@@ -57,17 +67,17 @@ func (c *ingressController) watchIngressListener(stopCh <-chan struct{}) error {
 			if !res.Put {
 				kv = res.PrevKV
 			}
-			class := new(core.IngressListener)
-			err := class.Parse(kv.Value)
+			lis := new(core.IngressListener)
+			err := lis.Parse(kv.Value)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
 			if res.Put {
-				c.classCache.Store(class.Name, class)
+				c.listenerCache.Store(lis.Name, lis)
 				continue
 			}
-			c.classCache.Delete(class.Name)
+			c.listenerCache.Delete(lis.Name)
 
 		case err := <-errCh:
 			fmt.Println(err)
@@ -83,7 +93,7 @@ func (c *ingressController) watchIngress(stopCh <-chan struct{}) error {
 	errCh := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	//TODO: 封装成存储库
-	go c.store.Watch(ctx, "ingresses/instance/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true})
+	go c.store.Watch(ctx, "ingresses/route/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true})
 	for {
 		select {
 		case res := <-updateCh:
@@ -161,22 +171,22 @@ func (c *ingressController) watchEndpoint(stopCh <-chan struct{}) error {
 }
 
 func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
-	clusters := make([]*cluster.Cluster, 0)
+	clusters := make([]types.Resource, 0)
 	endpoints := make(map[string][]string)
 	c.ecache.Range(func(k, v interface{}) bool {
 		endpoint := v.(*core.Endpoint)
-		if _, ok := endpoints[endpoint.Name]; !ok {
-			endpoints[endpoint.Name] = make([]string, 0)
+		key := endpoint.Namespace + "_" + endpoint.Service
+		if _, ok := endpoints[key]; !ok {
+			endpoints[key] = make([]string, 0)
 		}
-		endpoints[endpoint.Name] = append(endpoints[endpoint.Name], endpoint.HostIP)
+		endpoints[key] = append(endpoints[key], endpoint.HostIP)
 		return true
 	})
-	router := &route.RouteConfiguration{
-		Name:         "oars_ingress",
-		VirtualHosts: make([]*route.VirtualHost, 0),
-	}
+	routers := make(map[string]*route.RouteConfiguration)
+	filterChains := make(map[string][]*listener.FilterChain)
 	c.icache.Range(func(k, v interface{}) bool {
 		ingress := v.(*core.Ingress)
+		//route
 		for _, rule := range ingress.Rules {
 			virtualHost := &route.VirtualHost{
 				Name:    c.getHostName(rule.Host),
@@ -185,7 +195,7 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 			}
 
 			for _, path := range rule.HTTP.Paths {
-				clusterName := fmt.Sprintf("%s_%s_%d", path.Backend.Namespace, path.Backend.ServiceName, path.Backend.ServicePort)
+				clusterName := fmt.Sprintf("%s_%s_%d", ingress.Namespace, path.Backend.ServiceName, path.Backend.ServicePort)
 				r := &route.Route{
 					Match: &route.RouteMatch{
 						PathSpecifier: &route.RouteMatch_Prefix{
@@ -200,16 +210,108 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 						},
 					},
 				}
-				virtualHost.Routes = append(virtualHost.Routes, r)
+
+				key := ingress.Namespace + "_" + path.Backend.ServiceName
+				eps, ok := endpoints[key]
+				if !ok {
+					continue
+				}
+				cla := &endpointv3.ClusterLoadAssignment{
+					ClusterName: clusterName,
+					Endpoints:   makeEndpoints(eps, path.Backend.ServicePort),
+				}
 				c := &cluster.Cluster{
-					Name: clusterName,
+					Name:                 clusterName,
+					ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
+					ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
+					LbPolicy:             cluster.Cluster_ROUND_ROBIN,
+					LoadAssignment:       cla,
+					DnsLookupFamily:      cluster.Cluster_V4_ONLY,
 				}
 				clusters = append(clusters, c)
+				virtualHost.Routes = append(virtualHost.Routes, r)
 			}
-			router.VirtualHosts = append(router.VirtualHosts, virtualHost)
+			name := ingress.Namespace + "_" + ingress.Name
+			_, ok := routers[name]
+			if !ok {
+				routers[name] = &route.RouteConfiguration{
+					Name:         name,
+					VirtualHosts: make([]*route.VirtualHost, 0),
+				}
+			}
+			routers[name].VirtualHosts = append(routers[name].VirtualHosts, virtualHost)
+			//filterChains
+			manager := &hcm.HttpConnectionManager{
+				CodecType:  hcm.HttpConnectionManager_AUTO,
+				StatPrefix: "http",
+				RouteSpecifier: &hcm.HttpConnectionManager_Rds{
+					Rds: &hcm.Rds{
+						ConfigSource:    makeConfigSource(),
+						RouteConfigName: name,
+					},
+				},
+				HttpFilters: []*hcm.HttpFilter{{
+					Name: wellknown.Router,
+				}},
+			}
+			pbst, err := ptypes.MarshalAny(manager)
+			if err != nil {
+				return true
+			}
+			if _, ok := filterChains[ingress.Listener]; !ok {
+				filterChains[ingress.Listener] = make([]*listener.FilterChain, 0)
+			}
+			filterChain := &listener.FilterChain{
+				Filters: []*listener.Filter{{
+					Name: wellknown.HTTPConnectionManager,
+					ConfigType: &listener.Filter_TypedConfig{
+						TypedConfig: pbst,
+					},
+				}},
+			}
+			filterChains[ingress.Listener] = append(filterChains[ingress.Listener], filterChain)
 		}
 		return true
 	})
+	listeners := make([]types.Resource, 0)
+	c.listenerCache.Range(func(k, v interface{}) bool {
+		lis := v.(*core.IngressListener)
+		if _, ok := filterChains[lis.Name]; !ok {
+			filterChains[lis.Name] = make([]*listener.FilterChain, 0)
+		}
+		liser := &listener.Listener{
+			Name: lis.Name,
+			Address: &corev3.Address{
+				Address: &corev3.Address_SocketAddress{
+					SocketAddress: &corev3.SocketAddress{
+						Protocol: corev3.SocketAddress_TCP,
+						Address:  "0.0.0.0",
+						PortSpecifier: &corev3.SocketAddress_PortValue{
+							PortValue: uint32(lis.Port),
+						},
+					},
+				},
+			},
+			FilterChains: filterChains[lis.Name],
+		}
+		listeners = append(listeners, liser)
+		return true
+	})
+	c.version++
+	rResources := make([]types.Resource, 0)
+	for k := range routers {
+		rResources = append(rResources, routers[k])
+	}
+	snap := cachev3.NewSnapshot(
+		fmt.Sprintf("v.%d", c.version),
+		[]types.Resource{}, //endpoints
+		clusters,           //clusters
+		rResources,         //router
+		listeners,          //listeners
+		[]types.Resource{}, // runtimes
+		[]types.Resource{}, // secrets
+	)
+	c.snapshot.SetSnapshot("oars_ingress", snap)
 
 }
 
@@ -220,9 +322,55 @@ func (c *ingressController) getHostName(host string) string {
 	return "h_" + strings.Replace(host, ".", "_", -1)
 }
 
+func makeEndpoints(ips []string, port int) []*endpointv3.LocalityLbEndpoints {
+	lbes := make([]*endpointv3.LocalityLbEndpoints, 0)
+	for _, ip := range ips {
+		lbes = append(lbes,
+			&endpointv3.LocalityLbEndpoints{
+				LbEndpoints: []*endpointv3.LbEndpoint{{
+					HostIdentifier: &endpointv3.LbEndpoint_Endpoint{
+						Endpoint: &endpointv3.Endpoint{
+							Address: &corev3.Address{
+								Address: &corev3.Address_SocketAddress{
+									SocketAddress: &corev3.SocketAddress{
+										Protocol: corev3.SocketAddress_TCP,
+										Address:  ip,
+										PortSpecifier: &corev3.SocketAddress_PortValue{
+											PortValue: uint32(port),
+										},
+									},
+								},
+							},
+						},
+					},
+				}},
+			},
+		)
+	}
+	return lbes
+}
+
 const (
 	grpcMaxConcurrentStreams = 1000000
 )
+
+func makeConfigSource() *corev3.ConfigSource {
+	source := &corev3.ConfigSource{}
+	source.ResourceApiVersion = resource.DefaultAPIVersion
+	source.ConfigSourceSpecifier = &corev3.ConfigSource_ApiConfigSource{
+		ApiConfigSource: &corev3.ApiConfigSource{
+			TransportApiVersion:       resource.DefaultAPIVersion,
+			ApiType:                   corev3.ApiConfigSource_GRPC,
+			SetNodeOnFirstMessageOnly: true,
+			GrpcServices: []*corev3.GrpcService{{
+				TargetSpecifier: &corev3.GrpcService_EnvoyGrpc_{
+					EnvoyGrpc: &corev3.GrpcService_EnvoyGrpc{ClusterName: "xds_cluster"},
+				},
+			}},
+		},
+	}
+	return source
+}
 
 func registerServer(grpcServer *grpc.Server, server serverv3.Server) {
 	// register services
@@ -247,7 +395,7 @@ func runServer(ctx context.Context, srv3 serverv3.Server, port int) error {
 		return err
 	}
 	registerServer(grpcServer, srv3)
-	log.Info("management server listening on %d\n", port)
+	log.Infof("management server listening on %d", port)
 	if err = grpcServer.Serve(lis); err != nil {
 		log.Error(err)
 		return err

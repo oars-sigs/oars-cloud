@@ -1,0 +1,145 @@
+package admin
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/oars-sigs/oars-cloud/core"
+	"github.com/oars-sigs/oars-cloud/pkg/e"
+)
+
+func (s *service) regIngressListener(ctx context.Context, action string, args interface{}) *core.APIReply {
+	switch action {
+	case "get":
+		return s.GetIngressListener(args)
+	case "put":
+		return s.PutIngressListener(args)
+	case "delete":
+		return s.DeleteIngressListener(args)
+	}
+	return e.MethodNotFoundMethod()
+}
+
+func (s *service) GetIngressListener(args interface{}) *core.APIReply {
+	var listener core.IngressListener
+	err := unmarshalArgs(args, &listener)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	key := fmt.Sprintf("ingresses/listener/%s", listener.Name)
+	ctx := context.TODO()
+	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
+	if err != nil {
+		return e.InternalError(err)
+	}
+	listeners := make([]core.IngressListener, 0)
+	for _, kv := range kvs {
+		lis := new(core.IngressListener)
+		lis.Parse(kv.Value)
+		listeners = append(listeners, *lis)
+	}
+	return core.NewAPIReply(listeners)
+}
+
+func (s *service) PutIngressListener(args interface{}) *core.APIReply {
+	var listener core.IngressListener
+	err := unmarshalArgs(args, &listener)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	v := core.KV{
+		Key:   fmt.Sprintf("ingresses/listener/%s", listener.Name),
+		Value: listener.String(),
+	}
+	ctx := context.TODO()
+	err = s.store.Put(ctx, v)
+	if err != nil {
+		return e.InternalError(err)
+	}
+	return core.NewAPIReply(listener)
+}
+
+func (s *service) DeleteIngressListener(args interface{}) *core.APIReply {
+	var listener core.IngressListener
+	err := unmarshalArgs(args, &listener)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	ctx := context.TODO()
+	err = s.store.Delete(ctx, "ingresses/instance/listener/"+listener.Name+"/", core.KVOption{WithPrefix: true})
+	if err != nil {
+		return e.InternalError(err)
+	}
+
+	err = s.store.Delete(ctx, "ingresses/listener/"+listener.Name+"/", core.KVOption{WithPrefix: true})
+	if err != nil {
+		return e.InternalError(err)
+	}
+	return core.NewAPIReply("")
+}
+
+func (s *service) regIngress(ctx context.Context, action string, args interface{}) *core.APIReply {
+	switch action {
+	case "get":
+		return s.GetIngress(args)
+	case "put":
+		return s.PutIngress(args)
+	case "delete":
+		return s.DeleteIngress(args)
+	}
+	return e.MethodNotFoundMethod()
+}
+
+func (s *service) GetIngress(args interface{}) *core.APIReply {
+	var ingress core.Ingress
+	err := unmarshalArgs(args, &ingress)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	key := fmt.Sprintf("ingresses/instance/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
+	ctx := context.TODO()
+	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
+	if err != nil {
+		return e.InternalError(err)
+	}
+	ingresses := make([]core.Ingress, 0)
+	for _, kv := range kvs {
+		ing := new(core.Ingress)
+		ing.Parse(kv.Value)
+		ingresses = append(ingresses, *ing)
+	}
+	return core.NewAPIReply(ingresses)
+}
+
+func (s *service) PutIngress(args interface{}) *core.APIReply {
+	var ingress core.Ingress
+	err := unmarshalArgs(args, &ingress)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	v := core.KV{
+		Key:   fmt.Sprintf("ingresses/instance/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name),
+		Value: ingress.String(),
+	}
+	ctx := context.TODO()
+	err = s.store.Put(ctx, v)
+	if err != nil {
+		return e.InternalError(err)
+	}
+	return core.NewAPIReply(ingress)
+}
+
+func (s *service) DeleteIngress(args interface{}) *core.APIReply {
+	var ingress core.Ingress
+	err := unmarshalArgs(args, &ingress)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	ctx := context.TODO()
+	key := fmt.Sprintf("ingresses/instance/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
+	err = s.store.Delete(ctx, key, core.KVOption{WithPrefix: true})
+	if err != nil {
+		return e.InternalError(err)
+	}
+	return core.NewAPIReply("")
+}

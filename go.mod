@@ -12,6 +12,7 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/envoyproxy/go-control-plane v0.9.7
 	github.com/gin-gonic/gin v1.6.3
+	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/joho/godotenv v1.3.0
