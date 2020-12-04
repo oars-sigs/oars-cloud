@@ -4,8 +4,8 @@ go 1.14
 
 require (
 	github.com/Microsoft/go-winio v0.4.15 // indirect
+	github.com/cloudflare/cfssl v1.5.0
 	github.com/containerd/containerd v1.4.2 // indirect
-	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v0.7.3-0.20190111153827-295413c9d0e1
 	github.com/docker/go-connections v0.4.0
@@ -20,11 +20,16 @@ require (
 	github.com/miekg/dns v1.0.14
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/prometheus/client_golang v0.9.3
+	github.com/prometheus/client_golang v1.0.0
 	github.com/shirou/gopsutil/v3 v3.20.10
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
 	go.etcd.io/etcd v3.3.25+incompatible
-	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
+	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb
 	google.golang.org/grpc v1.27.0
+)
+
+replace (
+	go.etcd.io/bbolt => go.etcd.io/bbolt v1.3.5
+	go.etcd.io/etcd => go.etcd.io/etcd v0.5.0-alpha.5.0.20200910180754-dd1b699fc489 // ae9734ed278b is the SHA for git tag v3.4.13
 )

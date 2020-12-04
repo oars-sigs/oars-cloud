@@ -11,7 +11,7 @@ import (
 // Watch watches on a key or prefix
 func (s *Storage) Watch(ctx context.Context, key string, updateCh chan core.WatchChan, errCh chan error, op core.KVOption) {
 	key = s.keyPrefix + "/" + key
-	opts := []clientv3.OpOption{}
+	opts := make([]clientv3.OpOption, 0)
 	if op.WithPrefix {
 		opts = append(opts, clientv3.WithPrefix())
 	}
@@ -26,7 +26,6 @@ func (s *Storage) Watch(ctx context.Context, key string, updateCh chan core.Watc
 		if err != nil {
 			errCh <- err
 		} else {
-
 			for _, k := range gresp.Kvs {
 				kv := core.KV{
 					Key:   strings.TrimPrefix(string(k.Key), s.keyPrefix+"/"),

@@ -2,9 +2,11 @@ package admin
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/oars-sigs/oars-cloud/core"
+	"github.com/oars-sigs/oars-cloud/pkg/certificate"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 )
 
@@ -47,6 +49,30 @@ func (s *service) PutIngressListener(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
+	if len(listener.TLSCerts) == 0 {
+		ca := &certificate.CA{
+			Name:   listener.Name,
+			CN:     "oarscloud",
+			Expiry: "87600h",
+		}
+		req := &certificate.Request{
+			Name:      listener.Name,
+			CN:        listener.Name,
+			O:         listener.Name,
+			Hostnames: []string{"oars"},
+		}
+		cert, err := certificate.Create(ca, req)
+		if err != nil {
+			return e.InternalError(err)
+		}
+		listener.TLSCerts = map[string]core.TLSCertificate{
+			"*": core.TLSCertificate{
+				Cert: base64.StdEncoding.EncodeToString([]byte(cert.Cert)),
+				Key:  base64.StdEncoding.EncodeToString([]byte(cert.Key)),
+			},
+		}
+	}
+
 	v := core.KV{
 		Key:   fmt.Sprintf("ingresses/listener/%s", listener.Name),
 		Value: listener.String(),

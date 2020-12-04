@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"strings"
@@ -27,7 +28,6 @@ import (
 	secretservice "github.com/envoyproxy/go-control-plane/envoy/service/secret/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cachev3 "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
-	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	testv3 "github.com/envoyproxy/go-control-plane/pkg/test/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
@@ -338,14 +338,31 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 						clusters = append(clusters, c)
 						virtualHost.Routes = append(virtualHost.Routes, r)
 					}
+
 					router.VirtualHosts = append(router.VirtualHosts, virtualHost)
+					cert, key := c.getCert(r.Host, lis)
 					tls := &tlsv3.DownstreamTlsContext{
 						CommonTlsContext: &tlsv3.CommonTlsContext{
-							TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
-								&tlsv3.SdsSecretConfig{
-									SdsConfig: makeConfigSource(),
+							TlsCertificates: []*tlsv3.TlsCertificate{
+								&tlsv3.TlsCertificate{
+									PrivateKey: &corev3.DataSource{
+										Specifier: &corev3.DataSource_InlineBytes{
+											InlineBytes: key,
+										},
+									},
+									CertificateChain: &corev3.DataSource{
+										Specifier: &corev3.DataSource_InlineBytes{
+											InlineBytes: cert,
+										},
+									},
 								},
 							},
+							//TODO: 使用sds
+							// TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
+							// 	&tlsv3.SdsSecretConfig{
+							// 		SdsConfig: makeConfigSource(),
+							// 	},
+							// },
 						},
 					}
 					pbtls, err := ptypes.MarshalAny(tls)
@@ -408,6 +425,22 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 
 }
 
+func (c *ingressController) getCert(host string, lis *core.IngressListener) ([]byte, []byte) {
+	if lis.TLSCerts != nil {
+		tlsCert, ok := lis.TLSCerts[host]
+		if !ok {
+			tlsCert, ok = lis.TLSCerts["*"]
+			if !ok {
+				return nil, nil
+			}
+		}
+		cert, _ := base64.StdEncoding.DecodeString(tlsCert.Cert)
+		key, _ := base64.StdEncoding.DecodeString(tlsCert.Key)
+		return cert, key
+	}
+	return nil, nil
+}
+
 func (c *ingressController) getHostName(host string) string {
 	if host == "" {
 		host = "all"
@@ -449,10 +482,10 @@ const (
 
 func makeConfigSource() *corev3.ConfigSource {
 	source := &corev3.ConfigSource{}
-	source.ResourceApiVersion = resource.DefaultAPIVersion
+	source.ResourceApiVersion = corev3.ApiVersion_V3
 	source.ConfigSourceSpecifier = &corev3.ConfigSource_ApiConfigSource{
 		ApiConfigSource: &corev3.ApiConfigSource{
-			TransportApiVersion:       resource.DefaultAPIVersion,
+			TransportApiVersion:       corev3.ApiVersion_V3,
 			ApiType:                   corev3.ApiConfigSource_GRPC,
 			SetNodeOnFirstMessageOnly: true,
 			GrpcServices: []*corev3.GrpcService{{
