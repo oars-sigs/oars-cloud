@@ -134,11 +134,18 @@ func (m *Method) Parse(s string) error {
 
 //IngressListener 入口 Listener
 type IngressListener struct {
-	Version string `json:"version"`
-	Name    string `json:"name"`
-	Port    int    `json:"port"`
-	Created int64  `json:"created"`
-	Updated int64  `json:"updated"`
+	Version  string                    `json:"version"`
+	Name     string                    `json:"name"`
+	Port     int                       `json:"port"`
+	TLSCerts map[string]TLSCertificate `json:"tlsCerts,omitempty"`
+	Created  int64                     `json:"created"`
+	Updated  int64                     `json:"updated"`
+}
+
+type TLSCertificate struct {
+	CA   string `json:"ca,omitempty"`
+	Cert string `json:"cert,omitempty"`
+	Key  string `json:"key,omitempty"`
 }
 
 //String ...

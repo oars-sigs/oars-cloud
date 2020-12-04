@@ -17,6 +17,7 @@ import (
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	tlsv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	endpointservice "github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3"
@@ -37,29 +38,84 @@ import (
 type ingressController struct {
 	store         core.KVStore
 	cfg           *core.Config
+	snapshot      cachev3.SnapshotCache
 	ecache        sync.Map
 	icache        sync.Map
 	listenerCache sync.Map
-	snapshot      cachev3.SnapshotCache
+	useServices   sync.Map
 	version       int
 }
 
+func newIngress(store core.KVStore, cfg *core.Config) *ingressController {
+	snapshot := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, log.New())
+	return &ingressController{store: store, cfg: cfg, snapshot: snapshot}
+}
+
 func (c *ingressController) run(stopCh <-chan struct{}) error {
-	cache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, log.New())
-	c.snapshot = cache
 	ctx := context.Background()
 	cb := &testv3.Callbacks{Debug: false}
-	srv := serverv3.NewServer(ctx, cache, cb)
+	srv := serverv3.NewServer(ctx, c.snapshot, cb)
+	lrev, irev, erev, err := c.initCache()
+	if err != nil {
+		return err
+	}
+	c.updateHandle(nil)
+	go c.watchIngressListener(lrev, stopCh)
+	go c.watchIngress(irev, stopCh)
+	go c.watchEndpoint(erev, stopCh)
 	runServer(ctx, srv, c.cfg.Ingress.XDSPort)
 	return nil
 }
+func (c *ingressController) initCache() (lrev int64, irev int64, erev int64, err error) {
+	var kvs []core.KV
+	kvs, lrev, err = c.store.GetWithRev(context.Background(), "ingresses/listener/", core.KVOption{WithPrefix: true})
+	if err != nil {
+		return
+	}
+	for _, kv := range kvs {
+		r := new(core.IngressListener)
+		err = r.Parse(kv.Value)
+		if err != nil {
+			return
+		}
+		c.listenerCache.Store(r.Name, r)
+	}
+	kvs, irev, err = c.store.GetWithRev(context.Background(), "ingresses/route/", core.KVOption{WithPrefix: true})
+	if err != nil {
+		return
+	}
+	for _, kv := range kvs {
+		r := new(core.Ingress)
+		err = r.Parse(kv.Value)
+		if err != nil {
+			return
+		}
+		c.icache.Store(r.Name, r)
+	}
+	kvs, erev, err = c.store.GetWithRev(context.Background(), "ingresses/endpoint/", core.KVOption{WithPrefix: true})
+	if err != nil {
+		return
+	}
+	for _, kv := range kvs {
+		r := new(core.Endpoint)
+		err = r.Parse(kv.Value)
+		if err != nil {
+			return
+		}
+		c.ecache.Store(r.ID, r)
+	}
 
-func (c *ingressController) watchIngressListener(stopCh <-chan struct{}) error {
+	return
+
+}
+
+func (c *ingressController) watchIngressListener(rev int64, stopCh <-chan struct{}) error {
+
 	updateCh := make(chan core.WatchChan)
 	errCh := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	//TODO: 封装成存储库
-	go c.store.Watch(ctx, "ingresses/listener/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true})
+	go c.store.Watch(ctx, "ingresses/listener/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true, DisableFirst: true, WithRev: rev})
 	for {
 		select {
 		case res := <-updateCh:
@@ -88,12 +144,12 @@ func (c *ingressController) watchIngressListener(stopCh <-chan struct{}) error {
 	}
 }
 
-func (c *ingressController) watchIngress(stopCh <-chan struct{}) error {
+func (c *ingressController) watchIngress(rev int64, stopCh <-chan struct{}) error {
 	updateCh := make(chan core.WatchChan)
 	errCh := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	//TODO: 封装成存储库
-	go c.store.Watch(ctx, "ingresses/route/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true})
+	go c.store.Watch(ctx, "ingresses/route/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true, DisableFirst: true, WithRev: rev})
 	for {
 		select {
 		case res := <-updateCh:
@@ -122,12 +178,12 @@ func (c *ingressController) watchIngress(stopCh <-chan struct{}) error {
 	}
 }
 
-func (c *ingressController) watchEndpoint(stopCh <-chan struct{}) error {
+func (c *ingressController) watchEndpoint(rev int64, stopCh <-chan struct{}) error {
 	updateCh := make(chan core.WatchChan)
 	errCh := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	//TODO: 封装成存储库
-	go c.store.Watch(ctx, "services/endpoint/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true})
+	go c.store.Watch(ctx, "services/endpoint/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true, DisableFirst: true, WithRev: rev})
 	for {
 		select {
 		case res := <-updateCh:
@@ -171,6 +227,12 @@ func (c *ingressController) watchEndpoint(stopCh <-chan struct{}) error {
 }
 
 func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
+	if endpoint != nil {
+		if _, ok := c.useServices.Load(endpoint.Service); !ok {
+			return
+		}
+	}
+	c.useServices = sync.Map{}
 	clusters := make([]types.Resource, 0)
 	endpoints := make(map[string][]string)
 	c.ecache.Range(func(k, v interface{}) bool {
@@ -182,102 +244,136 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 		endpoints[key] = append(endpoints[key], endpoint.HostIP)
 		return true
 	})
-	routers := make(map[string]*route.RouteConfiguration)
-	filterChains := make(map[string][]*listener.FilterChain)
+	type ingressRs struct {
+		namespace string
+		rules     []core.IngressRule
+	}
+	rules := make(map[string]map[string]*ingressRs)
 	c.icache.Range(func(k, v interface{}) bool {
 		ingress := v.(*core.Ingress)
-		//route
+		if _, ok := rules[ingress.Listener]; !ok {
+			rules[ingress.Listener] = make(map[string]*ingressRs)
+		}
 		for _, rule := range ingress.Rules {
-			virtualHost := &route.VirtualHost{
-				Name:    c.getHostName(rule.Host),
-				Domains: []string{rule.Host},
-				Routes:  make([]*route.Route, 0),
-			}
-
-			for _, path := range rule.HTTP.Paths {
-				clusterName := fmt.Sprintf("%s_%s_%d", ingress.Namespace, path.Backend.ServiceName, path.Backend.ServicePort)
-				r := &route.Route{
-					Match: &route.RouteMatch{
-						PathSpecifier: &route.RouteMatch_Prefix{
-							Prefix: path.Path,
-						},
-					},
-					Action: &route.Route_Route{
-						Route: &route.RouteAction{
-							ClusterSpecifier: &route.RouteAction_Cluster{
-								Cluster: clusterName,
-							},
-						},
-					},
-				}
-
-				key := ingress.Namespace + "_" + path.Backend.ServiceName
-				eps, ok := endpoints[key]
-				if !ok {
-					continue
-				}
-				cla := &endpointv3.ClusterLoadAssignment{
-					ClusterName: clusterName,
-					Endpoints:   makeEndpoints(eps, path.Backend.ServicePort),
-				}
-				c := &cluster.Cluster{
-					Name:                 clusterName,
-					ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
-					ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
-					LbPolicy:             cluster.Cluster_ROUND_ROBIN,
-					LoadAssignment:       cla,
-					DnsLookupFamily:      cluster.Cluster_V4_ONLY,
-				}
-				clusters = append(clusters, c)
-				virtualHost.Routes = append(virtualHost.Routes, r)
-			}
-			name := ingress.Namespace + "_" + ingress.Name
-			_, ok := routers[name]
-			if !ok {
-				routers[name] = &route.RouteConfiguration{
-					Name:         name,
-					VirtualHosts: make([]*route.VirtualHost, 0),
+			if _, ok := rules[ingress.Listener][rule.Host]; !ok {
+				rules[ingress.Listener][rule.Host] = &ingressRs{
+					namespace: ingress.Namespace,
+					rules:     make([]core.IngressRule, 0),
 				}
 			}
-			routers[name].VirtualHosts = append(routers[name].VirtualHosts, virtualHost)
-			//filterChains
-			manager := &hcm.HttpConnectionManager{
-				CodecType:  hcm.HttpConnectionManager_AUTO,
-				StatPrefix: "http",
-				RouteSpecifier: &hcm.HttpConnectionManager_Rds{
-					Rds: &hcm.Rds{
-						ConfigSource:    makeConfigSource(),
-						RouteConfigName: name,
-					},
-				},
-				HttpFilters: []*hcm.HttpFilter{{
-					Name: wellknown.Router,
-				}},
-			}
-			pbst, err := ptypes.MarshalAny(manager)
-			if err != nil {
-				return true
-			}
-			if _, ok := filterChains[ingress.Listener]; !ok {
-				filterChains[ingress.Listener] = make([]*listener.FilterChain, 0)
-			}
-			filterChain := &listener.FilterChain{
-				Filters: []*listener.Filter{{
-					Name: wellknown.HTTPConnectionManager,
-					ConfigType: &listener.Filter_TypedConfig{
-						TypedConfig: pbst,
-					},
-				}},
-			}
-			filterChains[ingress.Listener] = append(filterChains[ingress.Listener], filterChain)
+			rules[ingress.Listener][rule.Host].rules = append(rules[ingress.Listener][rule.Host].rules, rule)
 		}
 		return true
 	})
 	listeners := make([]types.Resource, 0)
+	routers := make([]types.Resource, 0)
 	c.listenerCache.Range(func(k, v interface{}) bool {
 		lis := v.(*core.IngressListener)
-		if _, ok := filterChains[lis.Name]; !ok {
-			filterChains[lis.Name] = make([]*listener.FilterChain, 0)
+		filterChains := make([]*listener.FilterChain, 0)
+		manager := &hcm.HttpConnectionManager{
+			CodecType:  hcm.HttpConnectionManager_AUTO,
+			StatPrefix: "http",
+			RouteSpecifier: &hcm.HttpConnectionManager_Rds{
+				Rds: &hcm.Rds{
+					ConfigSource:    makeConfigSource(),
+					RouteConfigName: lis.Name,
+				},
+			},
+			HttpFilters: []*hcm.HttpFilter{{
+				Name: wellknown.Router,
+			}},
+		}
+		pbst, err := ptypes.MarshalAny(manager)
+		if err != nil {
+			return true
+		}
+		if _, ok := rules[lis.Name]; ok {
+			for _, rs := range rules[lis.Name] {
+				router := &route.RouteConfiguration{
+					Name:         lis.Name,
+					VirtualHosts: make([]*route.VirtualHost, 0),
+				}
+				for _, r := range rs.rules {
+					virtualHost := &route.VirtualHost{
+						Name:    c.getHostName(r.Host),
+						Domains: []string{r.Host},
+						Routes:  make([]*route.Route, 0),
+					}
+
+					for _, path := range r.HTTP.Paths {
+						c.useServices.Store(path.Backend.ServicePort, struct{}{})
+						clusterName := fmt.Sprintf("r_%s_%s", strings.ReplaceAll(r.Host, ".", "_"), strings.ReplaceAll(path.Path, "/", "_"))
+						r := &route.Route{
+							Match: &route.RouteMatch{
+								PathSpecifier: &route.RouteMatch_Prefix{
+									Prefix: path.Path,
+								},
+							},
+							Action: &route.Route_Route{
+								Route: &route.RouteAction{
+									ClusterSpecifier: &route.RouteAction_Cluster{
+										Cluster: clusterName,
+									},
+								},
+							},
+						}
+
+						key := rs.namespace + "_" + path.Backend.ServiceName
+						eps, ok := endpoints[key]
+						if !ok {
+							continue
+						}
+						cla := &endpointv3.ClusterLoadAssignment{
+							ClusterName: clusterName,
+							Endpoints:   makeEndpoints(eps, path.Backend.ServicePort),
+						}
+						c := &cluster.Cluster{
+							Name:                 clusterName,
+							ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
+							ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
+							LbPolicy:             cluster.Cluster_ROUND_ROBIN,
+							LoadAssignment:       cla,
+							DnsLookupFamily:      cluster.Cluster_V4_ONLY,
+						}
+						clusters = append(clusters, c)
+						virtualHost.Routes = append(virtualHost.Routes, r)
+					}
+					router.VirtualHosts = append(router.VirtualHosts, virtualHost)
+					tls := &tlsv3.DownstreamTlsContext{
+						CommonTlsContext: &tlsv3.CommonTlsContext{
+							TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
+								&tlsv3.SdsSecretConfig{
+									SdsConfig: makeConfigSource(),
+								},
+							},
+						},
+					}
+					pbtls, err := ptypes.MarshalAny(tls)
+					if err != nil {
+						return true
+					}
+					filterChain := &listener.FilterChain{
+						FilterChainMatch: &listener.FilterChainMatch{
+							ServerNames: []string{r.Host},
+						},
+						TransportSocket: &corev3.TransportSocket{
+							Name: "envoy.transport_sockets.tls",
+							ConfigType: &corev3.TransportSocket_TypedConfig{
+								TypedConfig: pbtls,
+							},
+						},
+						Filters: []*listener.Filter{{
+							Name: wellknown.HTTPConnectionManager,
+							ConfigType: &listener.Filter_TypedConfig{
+								TypedConfig: pbst,
+							},
+						}},
+					}
+
+					filterChains = append(filterChains, filterChain)
+				}
+				routers = append(routers, router)
+			}
 		}
 		liser := &listener.Listener{
 			Name: lis.Name,
@@ -292,21 +388,18 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 					},
 				},
 			},
-			FilterChains: filterChains[lis.Name],
+			FilterChains: filterChains,
 		}
 		listeners = append(listeners, liser)
 		return true
 	})
 	c.version++
-	rResources := make([]types.Resource, 0)
-	for k := range routers {
-		rResources = append(rResources, routers[k])
-	}
+
 	snap := cachev3.NewSnapshot(
 		fmt.Sprintf("v.%d", c.version),
 		[]types.Resource{}, //endpoints
 		clusters,           //clusters
-		rResources,         //router
+		routers,            //routers
 		listeners,          //listeners
 		[]types.Resource{}, // runtimes
 		[]types.Resource{}, // secrets
