@@ -31,6 +31,7 @@ import (
 	serverv3 "github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	testv3 "github.com/envoyproxy/go-control-plane/pkg/test/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -39,16 +40,18 @@ type ingressController struct {
 	store         core.KVStore
 	cfg           *core.Config
 	snapshot      cachev3.SnapshotCache
+	trigger       chan struct{}
 	ecache        sync.Map
 	icache        sync.Map
 	listenerCache sync.Map
 	useServices   sync.Map
-	version       int
+	version       int64
 }
 
 func newIngress(store core.KVStore, cfg *core.Config) *ingressController {
 	snapshot := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, log.New())
-	return &ingressController{store: store, cfg: cfg, snapshot: snapshot}
+	trigger := make(chan struct{}, 1)
+	return &ingressController{store: store, cfg: cfg, snapshot: snapshot, trigger: trigger}
 }
 
 func (c *ingressController) run(stopCh <-chan struct{}) error {
@@ -59,7 +62,8 @@ func (c *ingressController) run(stopCh <-chan struct{}) error {
 	if err != nil {
 		return err
 	}
-	c.updateHandle(nil)
+	go c.update(stopCh)
+	c.scheduler()
 	go c.watchIngressListener(lrev, stopCh)
 	go c.watchIngress(irev, stopCh)
 	go c.watchEndpoint(erev, stopCh)
@@ -92,7 +96,7 @@ func (c *ingressController) initCache() (lrev int64, irev int64, erev int64, err
 		}
 		c.icache.Store(r.Name, r)
 	}
-	kvs, erev, err = c.store.GetWithRev(context.Background(), "ingresses/endpoint/", core.KVOption{WithPrefix: true})
+	kvs, erev, err = c.store.GetWithRev(context.Background(), "services/endpoint/", core.KVOption{WithPrefix: true})
 	if err != nil {
 		return
 	}
@@ -110,7 +114,6 @@ func (c *ingressController) initCache() (lrev int64, irev int64, erev int64, err
 }
 
 func (c *ingressController) watchIngressListener(rev int64, stopCh <-chan struct{}) error {
-
 	updateCh := make(chan core.WatchChan)
 	errCh := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -131,9 +134,11 @@ func (c *ingressController) watchIngressListener(rev int64, stopCh <-chan struct
 			}
 			if res.Put {
 				c.listenerCache.Store(lis.Name, lis)
+				c.scheduler()
 				continue
 			}
 			c.listenerCache.Delete(lis.Name)
+			c.scheduler()
 
 		case err := <-errCh:
 			fmt.Println(err)
@@ -165,9 +170,11 @@ func (c *ingressController) watchIngress(rev int64, stopCh <-chan struct{}) erro
 			}
 			if res.Put {
 				c.icache.Store(ingress.Name, ingress)
+				c.scheduler()
 				continue
 			}
 			c.icache.Delete(ingress.Name)
+			c.scheduler()
 
 		case err := <-errCh:
 			fmt.Println(err)
@@ -212,11 +219,15 @@ func (c *ingressController) watchEndpoint(rev int64, stopCh <-chan struct{}) err
 						continue
 					}
 				}
-				c.updateHandle(endpoint)
+			}
+			if !res.Put {
+				c.ecache.Delete(endpoint.ID)
+			}
+			if _, ok := c.useServices.Load(endpoint.Service); !ok {
 				continue
 			}
-			c.updateHandle(endpoint)
-			c.ecache.Delete(endpoint.ID)
+			c.scheduler()
+
 		case err := <-errCh:
 			fmt.Println(err)
 		case <-stopCh:
@@ -226,12 +237,25 @@ func (c *ingressController) watchEndpoint(rev int64, stopCh <-chan struct{}) err
 	}
 }
 
-func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
-	if endpoint != nil {
-		if _, ok := c.useServices.Load(endpoint.Service); !ok {
+func (c *ingressController) scheduler() {
+	select {
+	case c.trigger <- struct{}{}:
+	default:
+	}
+}
+
+func (c *ingressController) update(stopCh <-chan struct{}) {
+	for {
+		select {
+		case <-stopCh:
 			return
+		case <-c.trigger:
+			c.updateHandle()
 		}
 	}
+}
+
+func (c *ingressController) updateHandle() {
 	c.useServices = sync.Map{}
 	clusters := make([]types.Resource, 0)
 	endpoints := make(map[string][]string)
@@ -294,9 +318,13 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 					VirtualHosts: make([]*route.VirtualHost, 0),
 				}
 				for _, r := range rs.rules {
+					domains := []string{r.Host}
+					if r.Host == "" {
+						domains = []string{"*"}
+					}
 					virtualHost := &route.VirtualHost{
 						Name:    c.getHostName(r.Host),
-						Domains: []string{r.Host},
+						Domains: domains,
 						Routes:  make([]*route.Route, 0),
 					}
 
@@ -309,14 +337,29 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 									Prefix: path.Path,
 								},
 							},
-							Action: &route.Route_Route{
-								Route: &route.RouteAction{
-									ClusterSpecifier: &route.RouteAction_Cluster{
-										Cluster: clusterName,
-									},
+						}
+						rr := &route.Route_Route{
+							Route: &route.RouteAction{
+								ClusterSpecifier: &route.RouteAction_Cluster{
+									Cluster: clusterName,
 								},
 							},
 						}
+						for k, v := range path.Config {
+							switch k {
+							case "prefix_rewrite":
+								rr.Route.PrefixRewrite = v
+							case "auto_host_rewrite":
+								rr.Route.HostRewriteSpecifier = &route.RouteAction_AutoHostRewrite{
+									AutoHostRewrite: &wrappers.BoolValue{Value: true},
+								}
+							case "host_rewrite":
+								rr.Route.HostRewriteSpecifier = &route.RouteAction_HostRewriteLiteral{
+									HostRewriteLiteral: v,
+								}
+							}
+						}
+						r.Action = rr
 
 						key := rs.namespace + "_" + path.Backend.ServiceName
 						eps, ok := endpoints[key]
@@ -410,8 +453,7 @@ func (c *ingressController) updateHandle(endpoint *core.Endpoint) {
 		listeners = append(listeners, liser)
 		return true
 	})
-	c.version++
-
+	c.version = time.Now().UnixNano()
 	snap := cachev3.NewSnapshot(
 		fmt.Sprintf("v.%d", c.version),
 		[]types.Resource{}, //endpoints

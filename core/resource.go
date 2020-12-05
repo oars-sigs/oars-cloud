@@ -189,7 +189,7 @@ type IngressRule struct {
 
 //IngressHTTP http ingress
 type IngressHTTP struct {
-	Paths []IngressPath `json:"path"`
+	Paths []IngressPath `json:"paths"`
 }
 
 //IngressPath ingress path
@@ -201,6 +201,6 @@ type IngressPath struct {
 
 //IngressBackend ingress backend
 type IngressBackend struct {
-	ServiceName string `json:"seriveName"`
+	ServiceName string `json:"serviceName"`
 	ServicePort int    `json:"servicePort"`
 }

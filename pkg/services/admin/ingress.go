@@ -92,7 +92,7 @@ func (s *service) DeleteIngressListener(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	ctx := context.TODO()
-	err = s.store.Delete(ctx, "ingresses/instance/listener/"+listener.Name+"/", core.KVOption{WithPrefix: true})
+	err = s.store.Delete(ctx, "ingresses/route/listener/"+listener.Name+"/", core.KVOption{WithPrefix: true})
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -122,7 +122,7 @@ func (s *service) GetIngress(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	key := fmt.Sprintf("ingresses/instance/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
+	key := fmt.Sprintf("ingresses/route/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
 	ctx := context.TODO()
 	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
 	if err != nil {
@@ -144,7 +144,7 @@ func (s *service) PutIngress(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	v := core.KV{
-		Key:   fmt.Sprintf("ingresses/instance/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name),
+		Key:   fmt.Sprintf("ingresses/route/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name),
 		Value: ingress.String(),
 	}
 	ctx := context.TODO()
@@ -162,7 +162,7 @@ func (s *service) DeleteIngress(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	ctx := context.TODO()
-	key := fmt.Sprintf("ingresses/instance/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
+	key := fmt.Sprintf("ingresses/route/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
 	err = s.store.Delete(ctx, key, core.KVOption{WithPrefix: true})
 	if err != nil {
 		return e.InternalError(err)
