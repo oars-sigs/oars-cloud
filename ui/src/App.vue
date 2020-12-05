@@ -86,11 +86,19 @@ export default {
         ],
       },
       {
-        action: "mdi-sitemap",
+        action: "mdi-web",
         title: "服务",
         items: [
           { title: "服务管理", path: "/service" },
           { title: "服务端点", path: "/endpoint" },
+        ],
+      },
+      {
+        action: "mdi-sitemap",
+        title: "网关",
+        items: [
+          { title: "端口管理", path: "/listener" },
+          { title: "路由配置", path: "/route" },
         ],
       },
       {

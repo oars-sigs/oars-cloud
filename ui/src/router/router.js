@@ -7,6 +7,8 @@ import Endpoint from '@/pages/service/endpoint'
 import EndpointExec from '@/pages/service/exec' 
 import Namespace from '@/pages/namespace/index'
 import Node from '@/pages/node/index'
+import Listener from '@/pages/ingress/listener'
+import Route from '@/pages/ingress/route'
 
 Vue.use(Router)
 
@@ -67,6 +69,22 @@ let router = new Router({
       component: EndpointExec,
       meta:{
         title: '端点'
+      }
+    },
+    {
+      path: '/listener',
+      name: 'Listener',
+      component: Listener,
+      meta:{
+        title: '端口管理'
+      }
+    },
+    {
+      path: '/route',
+      name: 'Listener',
+      component: Route,
+      meta:{
+        title: '路由配置'
       }
     },
     ]

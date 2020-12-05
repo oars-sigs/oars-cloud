@@ -468,16 +468,33 @@ func (c *ingressController) updateHandle() {
 }
 
 func (c *ingressController) getCert(host string, lis *core.IngressListener) ([]byte, []byte) {
-	if lis.TLSCerts != nil {
-		tlsCert, ok := lis.TLSCerts[host]
-		if !ok {
-			tlsCert, ok = lis.TLSCerts["*"]
-			if !ok {
-				return nil, nil
+	score := 0
+	index := -1
+	for i, tlsCert := range lis.TLSCerts {
+		cerths := strings.Split(tlsCert.Host, ".")
+		hs := strings.Split(host, ".")
+		if len(cerths) > len(hs) {
+			continue
+		}
+		curScore := 0
+		for n, ch := range cerths {
+			if hs[n] == ch {
+				curScore += 2
+				continue
+			}
+			if ch == "*" {
+				curScore++
+				break
 			}
 		}
-		cert, _ := base64.StdEncoding.DecodeString(tlsCert.Cert)
-		key, _ := base64.StdEncoding.DecodeString(tlsCert.Key)
+		if curScore > score {
+			index = i
+			score = curScore
+		}
+	}
+	if index != -1 {
+		cert, _ := base64.StdEncoding.DecodeString(lis.TLSCerts[index].Cert)
+		key, _ := base64.StdEncoding.DecodeString(lis.TLSCerts[index].Key)
 		return cert, key
 	}
 	return nil, nil

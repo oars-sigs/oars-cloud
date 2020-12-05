@@ -65,8 +65,9 @@ func (s *service) PutIngressListener(args interface{}) *core.APIReply {
 		if err != nil {
 			return e.InternalError(err)
 		}
-		listener.TLSCerts = map[string]core.TLSCertificate{
-			"*": core.TLSCertificate{
+		listener.TLSCerts = []core.TLSCertificate{
+			core.TLSCertificate{
+				Host: "*",
 				Cert: base64.StdEncoding.EncodeToString([]byte(cert.Cert)),
 				Key:  base64.StdEncoding.EncodeToString([]byte(cert.Key)),
 			},
@@ -97,7 +98,7 @@ func (s *service) DeleteIngressListener(args interface{}) *core.APIReply {
 		return e.InternalError(err)
 	}
 
-	err = s.store.Delete(ctx, "ingresses/listener/"+listener.Name+"/", core.KVOption{WithPrefix: true})
+	err = s.store.Delete(ctx, "ingresses/listener/"+listener.Name, core.KVOption{WithPrefix: true})
 	if err != nil {
 		return e.InternalError(err)
 	}
