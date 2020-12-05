@@ -294,31 +294,34 @@ func (c *ingressController) updateHandle() {
 	c.listenerCache.Range(func(k, v interface{}) bool {
 		lis := v.(*core.IngressListener)
 		filterChains := make([]*listener.FilterChain, 0)
-		manager := &hcm.HttpConnectionManager{
-			CodecType:  hcm.HttpConnectionManager_AUTO,
-			StatPrefix: "http",
-			RouteSpecifier: &hcm.HttpConnectionManager_Rds{
-				Rds: &hcm.Rds{
-					ConfigSource:    makeConfigSource(),
-					RouteConfigName: lis.Name,
-				},
-			},
-			HttpFilters: []*hcm.HttpFilter{{
-				Name: wellknown.Router,
-			}},
-		}
-		pbst, err := ptypes.MarshalAny(manager)
-		if err != nil {
-			return true
-		}
 		if _, ok := rules[lis.Name]; ok {
 			for _, rs := range rules[lis.Name] {
-				router := &route.RouteConfiguration{
-					Name:         lis.Name,
-					VirtualHosts: make([]*route.VirtualHost, 0),
-				}
+				//range and create one listener all routes
 				for _, r := range rs.rules {
+					routeName := fmt.Sprintf("%s_%s", lis.Name, strings.ReplaceAll(r.Host, ".", "_"))
+					router := &route.RouteConfiguration{
+						Name:         routeName,
+						VirtualHosts: make([]*route.VirtualHost, 0),
+					}
+					manager := &hcm.HttpConnectionManager{
+						CodecType:  hcm.HttpConnectionManager_AUTO,
+						StatPrefix: "http",
+						RouteSpecifier: &hcm.HttpConnectionManager_Rds{
+							Rds: &hcm.Rds{
+								ConfigSource:    makeConfigSource(),
+								RouteConfigName: routeName,
+							},
+						},
+						HttpFilters: []*hcm.HttpFilter{{
+							Name: wellknown.Router,
+						}},
+					}
+					pbst, err := ptypes.MarshalAny(manager)
+					if err != nil {
+						return true
+					}
 					domains := []string{r.Host}
+					//not set host, use *
 					if r.Host == "" {
 						domains = []string{"*"}
 					}
@@ -329,8 +332,9 @@ func (c *ingressController) updateHandle() {
 					}
 
 					for _, path := range r.HTTP.Paths {
+						//generate one route in a host
 						c.useServices.Store(path.Backend.ServicePort, struct{}{})
-						clusterName := fmt.Sprintf("r_%s_%s", strings.ReplaceAll(r.Host, ".", "_"), strings.ReplaceAll(path.Path, "/", "_"))
+						clusterName := fmt.Sprintf("%s_%s", routeName, strings.ReplaceAll(path.Path, "/", "_"))
 						r := &route.Route{
 							Match: &route.RouteMatch{
 								PathSpecifier: &route.RouteMatch_Prefix{
@@ -360,7 +364,9 @@ func (c *ingressController) updateHandle() {
 							}
 						}
 						r.Action = rr
+						virtualHost.Routes = append(virtualHost.Routes, r)
 
+						//generate cluster
 						key := rs.namespace + "_" + path.Backend.ServiceName
 						eps, ok := endpoints[key]
 						if !ok {
@@ -379,10 +385,10 @@ func (c *ingressController) updateHandle() {
 							DnsLookupFamily:      cluster.Cluster_V4_ONLY,
 						}
 						clusters = append(clusters, c)
-						virtualHost.Routes = append(virtualHost.Routes, r)
 					}
 
 					router.VirtualHosts = append(router.VirtualHosts, virtualHost)
+					// generate tls cert
 					cert, key := c.getCert(r.Host, lis)
 					tls := &tlsv3.DownstreamTlsContext{
 						CommonTlsContext: &tlsv3.CommonTlsContext{
@@ -431,8 +437,8 @@ func (c *ingressController) updateHandle() {
 					}
 
 					filterChains = append(filterChains, filterChain)
+					routers = append(routers, router)
 				}
-				routers = append(routers, router)
 			}
 		}
 		liser := &listener.Listener{
@@ -454,6 +460,7 @@ func (c *ingressController) updateHandle() {
 		return true
 	})
 	c.version = time.Now().UnixNano()
+	//fmt.Println(listeners)
 	snap := cachev3.NewSnapshot(
 		fmt.Sprintf("v.%d", c.version),
 		[]types.Resource{}, //endpoints
