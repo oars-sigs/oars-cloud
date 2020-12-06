@@ -189,24 +189,25 @@ func (c *ingressController) update(stopCh <-chan struct{}) {
 }
 
 func (c *ingressController) updateHandle() {
-	type ingressRs struct {
+	type ingressRule struct {
 		namespace string
-		rules     []core.IngressRule
+		core.IngressRule
 	}
-	rules := make(map[string]map[string]*ingressRs)
+	rules := make(map[string]map[string][]ingressRule)
 	c.icache.Range(func(k, v interface{}) bool {
 		ingress := v.(*core.IngressRoute)
 		if _, ok := rules[ingress.Listener]; !ok {
-			rules[ingress.Listener] = make(map[string]*ingressRs)
+			rules[ingress.Listener] = make(map[string][]ingressRule)
 		}
 		for _, rule := range ingress.Rules {
 			if _, ok := rules[ingress.Listener][rule.Host]; !ok {
-				rules[ingress.Listener][rule.Host] = &ingressRs{
-					namespace: ingress.Namespace,
-					rules:     make([]core.IngressRule, 0),
-				}
+				rules[ingress.Listener][rule.Host] = make([]ingressRule, 0)
 			}
-			rules[ingress.Listener][rule.Host].rules = append(rules[ingress.Listener][rule.Host].rules, rule)
+			ir := ingressRule{
+				namespace:   ingress.Namespace,
+				IngressRule: rule,
+			}
+			rules[ingress.Listener][rule.Host] = append(rules[ingress.Listener][rule.Host], ir)
 		}
 		return true
 	})
@@ -220,13 +221,13 @@ func (c *ingressController) updateHandle() {
 			return true
 		}
 		//range and create one listener all hosts
-		for host, rs := range rules[lis.Name] {
+		for host, irs := range rules[lis.Name] {
 			//range and create one host all routes
 			routes := make([]*route.Route, 0)
-			for _, r := range rs.rules {
-				for _, path := range r.HTTP.Paths {
+			for _, ir := range irs {
+				for _, path := range ir.HTTP.Paths {
 					//generate one route in a host
-					clusterName := path.Backend.ServiceName + "_" + rs.namespace
+					clusterName := path.Backend.ServiceName + "_" + ir.namespace
 					r := &route.Route{
 						Match: &route.RouteMatch{
 							PathSpecifier: &route.RouteMatch_Prefix{
@@ -262,7 +263,7 @@ func (c *ingressController) updateHandle() {
 					if _, ok := clustersMap[clusterName]; !ok {
 						cla := &endpointv3.ClusterLoadAssignment{
 							ClusterName: clusterName,
-							Endpoints:   makeEndpoints([]string{path.Backend.ServiceName + "." + rs.namespace}, path.Backend.ServicePort),
+							Endpoints:   makeEndpoints([]string{path.Backend.ServiceName + "." + ir.namespace}, path.Backend.ServicePort),
 						}
 						clustersMap[clusterName] = &cluster.Cluster{
 							Name:                 clusterName,
