@@ -367,19 +367,19 @@ func (c *ingressController) updateHandle() {
 						virtualHost.Routes = append(virtualHost.Routes, r)
 
 						//generate cluster
-						key := rs.namespace + "_" + path.Backend.ServiceName
-						eps, ok := endpoints[key]
-						if !ok {
-							continue
-						}
+						// key := rs.namespace + "_" + path.Backend.ServiceName
+						// eps, ok := endpoints[key]
+						// if !ok {
+						// 	continue
+						// }
 						cla := &endpointv3.ClusterLoadAssignment{
 							ClusterName: clusterName,
-							Endpoints:   makeEndpoints(eps, path.Backend.ServicePort),
+							Endpoints:   makeEndpoints([]string{path.Backend.ServiceName + "." + rs.namespace}, path.Backend.ServicePort),
 						}
 						c := &cluster.Cluster{
 							Name:                 clusterName,
 							ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
-							ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
+							ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STRICT_DNS},
 							LbPolicy:             cluster.Cluster_ROUND_ROBIN,
 							LoadAssignment:       cla,
 							DnsLookupFamily:      cluster.Cluster_V4_ONLY,
@@ -460,7 +460,7 @@ func (c *ingressController) updateHandle() {
 		return true
 	})
 	c.version = time.Now().UnixNano()
-	//fmt.Println(listeners)
+	fmt.Println(clusters)
 	snap := cachev3.NewSnapshot(
 		fmt.Sprintf("v.%d", c.version),
 		[]types.Resource{}, //endpoints

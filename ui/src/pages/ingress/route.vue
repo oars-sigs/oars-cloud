@@ -235,6 +235,7 @@ export default {
       this.actionParam = {
         args: {},
       };
+      this.routeYaml=""
     },
     editorInit: function () {
       require("brace/ext/language_tools");
@@ -312,6 +313,7 @@ export default {
           this.overlay = true;
           let args = yaml.safeLoad(_that.routeYaml);
           args.name = this.actionParam.args.name;
+          args.namespace = this.namespace;
           this.$call("system.admin.ingress.put", args).then(() => {
             _that.initActionParam();
             _that.dialog = false;

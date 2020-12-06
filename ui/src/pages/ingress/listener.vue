@@ -213,6 +213,7 @@ export default {
       this.actionParam = {
         args: {},
       };
+      this.listenerYaml=""
     },
     editorInit: function () {
       require("brace/ext/language_tools");
