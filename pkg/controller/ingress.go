@@ -41,10 +41,8 @@ type ingressController struct {
 	cfg           *core.Config
 	snapshot      cachev3.SnapshotCache
 	trigger       chan struct{}
-	ecache        sync.Map
 	icache        sync.Map
 	listenerCache sync.Map
-	useServices   sync.Map
 	version       int64
 }
 
@@ -58,7 +56,7 @@ func (c *ingressController) run(stopCh <-chan struct{}) error {
 	ctx := context.Background()
 	cb := &testv3.Callbacks{Debug: false}
 	srv := serverv3.NewServer(ctx, c.snapshot, cb)
-	lrev, irev, erev, err := c.initCache()
+	lrev, irev, err := c.initCache()
 	if err != nil {
 		return err
 	}
@@ -66,11 +64,10 @@ func (c *ingressController) run(stopCh <-chan struct{}) error {
 	c.scheduler()
 	go c.watchIngressListener(lrev, stopCh)
 	go c.watchIngress(irev, stopCh)
-	go c.watchEndpoint(erev, stopCh)
 	runServer(ctx, srv, c.cfg.Ingress.XDSPort)
 	return nil
 }
-func (c *ingressController) initCache() (lrev int64, irev int64, erev int64, err error) {
+func (c *ingressController) initCache() (lrev int64, irev int64, err error) {
 	var kvs []core.KV
 	kvs, lrev, err = c.store.GetWithRev(context.Background(), "ingresses/listener/", core.KVOption{WithPrefix: true})
 	if err != nil {
@@ -95,18 +92,6 @@ func (c *ingressController) initCache() (lrev int64, irev int64, erev int64, err
 			return
 		}
 		c.icache.Store(r.Name, r)
-	}
-	kvs, erev, err = c.store.GetWithRev(context.Background(), "services/endpoint/", core.KVOption{WithPrefix: true})
-	if err != nil {
-		return
-	}
-	for _, kv := range kvs {
-		r := new(core.Endpoint)
-		err = r.Parse(kv.Value)
-		if err != nil {
-			return
-		}
-		c.ecache.Store(r.ID, r)
 	}
 
 	return
@@ -185,58 +170,6 @@ func (c *ingressController) watchIngress(rev int64, stopCh <-chan struct{}) erro
 	}
 }
 
-func (c *ingressController) watchEndpoint(rev int64, stopCh <-chan struct{}) error {
-	updateCh := make(chan core.WatchChan)
-	errCh := make(chan error)
-	ctx, cancel := context.WithCancel(context.Background())
-	//TODO: 封装成存储库
-	go c.store.Watch(ctx, "services/endpoint/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true, DisableFirst: true, WithRev: rev})
-	for {
-		select {
-		case res := <-updateCh:
-			kv := res.KV
-			if !res.Put {
-				kv = res.PrevKV
-			}
-			endpoint := new(core.Endpoint)
-			err := endpoint.Parse(kv.Value)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			if endpoint.Service == "node" {
-				continue
-			}
-			if res.Put {
-				olde, ok := c.ecache.LoadOrStore(endpoint.ID, endpoint)
-				if ok {
-					if olde.(*core.Endpoint).HostIP == endpoint.HostIP {
-						continue
-					}
-				}
-				if !ok {
-					if olde.(*core.Endpoint).State != "running" {
-						continue
-					}
-				}
-			}
-			if !res.Put {
-				c.ecache.Delete(endpoint.ID)
-			}
-			if _, ok := c.useServices.Load(endpoint.Service); !ok {
-				continue
-			}
-			c.scheduler()
-
-		case err := <-errCh:
-			fmt.Println(err)
-		case <-stopCh:
-			cancel()
-			return nil
-		}
-	}
-}
-
 func (c *ingressController) scheduler() {
 	select {
 	case c.trigger <- struct{}{}:
@@ -256,18 +189,7 @@ func (c *ingressController) update(stopCh <-chan struct{}) {
 }
 
 func (c *ingressController) updateHandle() {
-	c.useServices = sync.Map{}
 	clusters := make([]types.Resource, 0)
-	endpoints := make(map[string][]string)
-	c.ecache.Range(func(k, v interface{}) bool {
-		endpoint := v.(*core.Endpoint)
-		key := endpoint.Namespace + "_" + endpoint.Service
-		if _, ok := endpoints[key]; !ok {
-			endpoints[key] = make([]string, 0)
-		}
-		endpoints[key] = append(endpoints[key], endpoint.HostIP)
-		return true
-	})
 	type ingressRs struct {
 		namespace string
 		rules     []core.IngressRule
@@ -333,7 +255,6 @@ func (c *ingressController) updateHandle() {
 
 					for _, path := range r.HTTP.Paths {
 						//generate one route in a host
-						c.useServices.Store(path.Backend.ServicePort, struct{}{})
 						clusterName := fmt.Sprintf("%s_%s", routeName, strings.ReplaceAll(path.Path, "/", "_"))
 						r := &route.Route{
 							Match: &route.RouteMatch{
@@ -367,11 +288,6 @@ func (c *ingressController) updateHandle() {
 						virtualHost.Routes = append(virtualHost.Routes, r)
 
 						//generate cluster
-						// key := rs.namespace + "_" + path.Backend.ServiceName
-						// eps, ok := endpoints[key]
-						// if !ok {
-						// 	continue
-						// }
 						cla := &endpointv3.ClusterLoadAssignment{
 							ClusterName: clusterName,
 							Endpoints:   makeEndpoints([]string{path.Backend.ServiceName + "." + rs.namespace}, path.Backend.ServicePort),
