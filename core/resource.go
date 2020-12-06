@@ -185,13 +185,20 @@ func (route *IngressRoute) Parse(s string) error {
 
 //IngressRule Ingress规则
 type IngressRule struct {
-	Host string      `json:"host"`
-	HTTP IngressHTTP `json:"http"`
+	Host string       `json:"host"`
+	HTTP *IngressHTTP `json:"http,omitempty"`
+	TCP  *IngressTCP  `json:"tcp,omitempty"`
 }
 
 //IngressHTTP http ingress
 type IngressHTTP struct {
 	Paths []IngressPath `json:"paths"`
+}
+
+//IngressTCP tcp ingress
+type IngressTCP struct {
+	Backend IngressBackend    `json:"backend"`
+	Config  map[string]string `json:"config,omitempty"`
 }
 
 //IngressPath ingress path

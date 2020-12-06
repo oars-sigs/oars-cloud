@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	tcpproxy "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
 	tlsv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
@@ -188,11 +190,12 @@ func (c *ingressController) update(stopCh <-chan struct{}) {
 	}
 }
 
+type ingressRule struct {
+	namespace string
+	core.IngressRule
+}
+
 func (c *ingressController) updateHandle() {
-	type ingressRule struct {
-		namespace string
-		core.IngressRule
-	}
 	rules := make(map[string]map[string][]ingressRule)
 	c.icache.Range(func(k, v interface{}) bool {
 		ingress := v.(*core.IngressRoute)
@@ -216,151 +219,14 @@ func (c *ingressController) updateHandle() {
 	clustersMap := make(map[string]*cluster.Cluster)
 	c.listenerCache.Range(func(k, v interface{}) bool {
 		lis := v.(*core.IngressListener)
-		filterChains := make([]*listener.FilterChain, 0)
 		if _, ok := rules[lis.Name]; !ok {
 			return true
 		}
-		//range and create one listener all hosts
-		for host, irs := range rules[lis.Name] {
-			//range and create one host all routes
-			routes := make([]*route.Route, 0)
-			for _, ir := range irs {
-				for _, path := range ir.HTTP.Paths {
-					//generate one route in a host
-					clusterName := path.Backend.ServiceName + "_" + ir.namespace
-					r := &route.Route{
-						Match: &route.RouteMatch{
-							PathSpecifier: &route.RouteMatch_Prefix{
-								Prefix: path.Path,
-							},
-						},
-					}
-					rr := &route.Route_Route{
-						Route: &route.RouteAction{
-							ClusterSpecifier: &route.RouteAction_Cluster{
-								Cluster: clusterName,
-							},
-						},
-					}
-					for k, v := range path.Config {
-						switch k {
-						case "prefix_rewrite":
-							rr.Route.PrefixRewrite = v
-						case "auto_host_rewrite":
-							rr.Route.HostRewriteSpecifier = &route.RouteAction_AutoHostRewrite{
-								AutoHostRewrite: &wrappers.BoolValue{Value: true},
-							}
-						case "host_rewrite":
-							rr.Route.HostRewriteSpecifier = &route.RouteAction_HostRewriteLiteral{
-								HostRewriteLiteral: v,
-							}
-						}
-					}
-					r.Action = rr
-					routes = append(routes, r)
-
-					//generate cluster if not exist
-					if _, ok := clustersMap[clusterName]; !ok {
-						cla := &endpointv3.ClusterLoadAssignment{
-							ClusterName: clusterName,
-							Endpoints:   makeEndpoints([]string{path.Backend.ServiceName + "." + ir.namespace}, path.Backend.ServicePort),
-						}
-						clustersMap[clusterName] = &cluster.Cluster{
-							Name:                 clusterName,
-							ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
-							ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STRICT_DNS},
-							LbPolicy:             cluster.Cluster_ROUND_ROBIN,
-							LoadAssignment:       cla,
-							DnsLookupFamily:      cluster.Cluster_V4_ONLY,
-						}
-					}
-
-				}
-			}
-
-			//router
-			routeName := fmt.Sprintf("%s_%s", lis.Name, strings.ReplaceAll(host, ".", "_"))
-			router := &route.RouteConfiguration{
-				Name: routeName,
-				VirtualHosts: []*route.VirtualHost{
-					&route.VirtualHost{
-						Name:    "default",
-						Domains: []string{"*"},
-						Routes:  routes,
-					},
-				},
-			}
-			routers = append(routers, router)
-
-			//hcm
-			manager := &hcm.HttpConnectionManager{
-				CodecType:  hcm.HttpConnectionManager_AUTO,
-				StatPrefix: "http",
-				RouteSpecifier: &hcm.HttpConnectionManager_Rds{
-					Rds: &hcm.Rds{
-						ConfigSource:    makeConfigSource(),
-						RouteConfigName: routeName,
-					},
-				},
-				HttpFilters: []*hcm.HttpFilter{{
-					Name: wellknown.Router,
-				}},
-			}
-			pbst, err := ptypes.MarshalAny(manager)
-			if err != nil {
-				return true
-			}
-
-			// generate tls cert
-			cert, key := c.getCert(host, lis)
-			tls := &tlsv3.DownstreamTlsContext{
-				CommonTlsContext: &tlsv3.CommonTlsContext{
-					TlsCertificates: []*tlsv3.TlsCertificate{
-						&tlsv3.TlsCertificate{
-							PrivateKey: &corev3.DataSource{
-								Specifier: &corev3.DataSource_InlineBytes{
-									InlineBytes: key,
-								},
-							},
-							CertificateChain: &corev3.DataSource{
-								Specifier: &corev3.DataSource_InlineBytes{
-									InlineBytes: cert,
-								},
-							},
-						},
-					},
-					//TODO: 使用sds
-					// TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
-					// 	&tlsv3.SdsSecretConfig{
-					// 		SdsConfig: makeConfigSource(),
-					// 	},
-					// },
-				},
-			}
-			pbtls, err := ptypes.MarshalAny(tls)
-			if err != nil {
-				return true
-			}
-			filterChain := &listener.FilterChain{
-				FilterChainMatch: &listener.FilterChainMatch{
-					ServerNames: []string{host},
-				},
-				TransportSocket: &corev3.TransportSocket{
-					Name: "envoy.transport_sockets.tls",
-					ConfigType: &corev3.TransportSocket_TypedConfig{
-						TypedConfig: pbtls,
-					},
-				},
-				Filters: []*listener.Filter{{
-					Name: wellknown.HTTPConnectionManager,
-					ConfigType: &listener.Filter_TypedConfig{
-						TypedConfig: pbst,
-					},
-				}},
-			}
-			filterChains = append(filterChains, filterChain)
+		filterChains, newRouters := c.makeTCPChains(lis, rules[lis.Name], clustersMap)
+		if len(filterChains) == 0 {
+			filterChains, newRouters = c.makeHTTPChains(lis, rules[lis.Name], clustersMap)
 		}
-
+		routers = append(routers, newRouters...)
 		liser := &listener.Listener{
 			Name: lis.Name,
 			Address: &corev3.Address{
@@ -384,8 +250,8 @@ func (c *ingressController) updateHandle() {
 	for k := range clustersMap {
 		clusters = append(clusters, clustersMap[k])
 	}
-	// dd, _ := json.Marshal(clusters)
-	// fmt.Println(string(dd))
+	dd, _ := json.Marshal(clusters)
+	fmt.Println(string(dd))
 	snap := cachev3.NewSnapshot(
 		fmt.Sprintf("v.%d", c.version),
 		[]types.Resource{}, //endpoints
@@ -397,6 +263,200 @@ func (c *ingressController) updateHandle() {
 	)
 	c.snapshot.SetSnapshot("oars_ingress", snap)
 
+}
+
+func (c *ingressController) makeTCPChains(lis *core.IngressListener, rules map[string][]ingressRule, clustersMap map[string]*cluster.Cluster) ([]*listener.FilterChain, []types.Resource) {
+	filterChains := make([]*listener.FilterChain, 0)
+	routers := make([]types.Resource, 0)
+	for _, irs := range rules {
+		for _, ir := range irs {
+			if ir.TCP == nil {
+				continue
+			}
+			clusterName := ir.TCP.Backend.ServiceName + "_" + ir.namespace
+			if _, ok := clustersMap[clusterName]; !ok {
+				cla := &endpointv3.ClusterLoadAssignment{
+					ClusterName: clusterName,
+					Endpoints:   makeEndpoints([]string{ir.TCP.Backend.ServiceName + "." + ir.namespace}, ir.TCP.Backend.ServicePort),
+				}
+				clustersMap[clusterName] = &cluster.Cluster{
+					Name:                 clusterName,
+					ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
+					ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STRICT_DNS},
+					LbPolicy:             cluster.Cluster_ROUND_ROBIN,
+					LoadAssignment:       cla,
+					DnsLookupFamily:      cluster.Cluster_V4_ONLY,
+				}
+			}
+			tcpp := &tcpproxy.TcpProxy{
+				StatPrefix: "ingress_tcp",
+				ClusterSpecifier: &tcpproxy.TcpProxy_Cluster{
+					Cluster: clusterName,
+				},
+			}
+			pbst, err := ptypes.MarshalAny(tcpp)
+			if err != nil {
+				continue
+			}
+			filterChain := &listener.FilterChain{
+				Filters: []*listener.Filter{{
+					Name: wellknown.HTTPConnectionManager,
+					ConfigType: &listener.Filter_TypedConfig{
+						TypedConfig: pbst,
+					},
+				}},
+			}
+			filterChains = append(filterChains, filterChain)
+		}
+	}
+	return filterChains, routers
+}
+
+func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[string][]ingressRule, clustersMap map[string]*cluster.Cluster) ([]*listener.FilterChain, []types.Resource) {
+	filterChains := make([]*listener.FilterChain, 0)
+	routers := make([]types.Resource, 0)
+	//range and create one listener all hosts
+	for host, irs := range rules {
+		routes := make([]*route.Route, 0)
+
+		//range and create one host all routes
+		for _, ir := range irs {
+			for _, path := range ir.HTTP.Paths {
+				//generate one route in a host
+				clusterName := path.Backend.ServiceName + "_" + ir.namespace
+				r := &route.Route{
+					Match: &route.RouteMatch{
+						PathSpecifier: &route.RouteMatch_Prefix{
+							Prefix: path.Path,
+						},
+					},
+				}
+				rr := &route.Route_Route{
+					Route: &route.RouteAction{
+						ClusterSpecifier: &route.RouteAction_Cluster{
+							Cluster: clusterName,
+						},
+					},
+				}
+				for k, v := range path.Config {
+					switch k {
+					case "prefix_rewrite":
+						rr.Route.PrefixRewrite = v
+					case "auto_host_rewrite":
+						rr.Route.HostRewriteSpecifier = &route.RouteAction_AutoHostRewrite{
+							AutoHostRewrite: &wrappers.BoolValue{Value: true},
+						}
+					case "host_rewrite":
+						rr.Route.HostRewriteSpecifier = &route.RouteAction_HostRewriteLiteral{
+							HostRewriteLiteral: v,
+						}
+					}
+				}
+				r.Action = rr
+				routes = append(routes, r)
+
+				//generate cluster if not exist
+				if _, ok := clustersMap[clusterName]; !ok {
+					cla := &endpointv3.ClusterLoadAssignment{
+						ClusterName: clusterName,
+						Endpoints:   makeEndpoints([]string{path.Backend.ServiceName + "." + ir.namespace}, path.Backend.ServicePort),
+					}
+					clustersMap[clusterName] = &cluster.Cluster{
+						Name:                 clusterName,
+						ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
+						ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_STRICT_DNS},
+						LbPolicy:             cluster.Cluster_ROUND_ROBIN,
+						LoadAssignment:       cla,
+						DnsLookupFamily:      cluster.Cluster_V4_ONLY,
+					}
+				}
+
+			}
+		}
+
+		//router
+		routeName := fmt.Sprintf("%s_%s", lis.Name, strings.ReplaceAll(host, ".", "_"))
+		router := &route.RouteConfiguration{
+			Name: routeName,
+			VirtualHosts: []*route.VirtualHost{
+				&route.VirtualHost{
+					Name:    "default",
+					Domains: []string{"*"},
+					Routes:  routes,
+				},
+			},
+		}
+		routers = append(routers, router)
+
+		//hcm
+		manager := &hcm.HttpConnectionManager{
+			CodecType:  hcm.HttpConnectionManager_AUTO,
+			StatPrefix: "ingress_http",
+			RouteSpecifier: &hcm.HttpConnectionManager_Rds{
+				Rds: &hcm.Rds{
+					ConfigSource:    makeConfigSource(),
+					RouteConfigName: routeName,
+				},
+			},
+			HttpFilters: []*hcm.HttpFilter{{
+				Name: wellknown.Router,
+			}},
+		}
+		pbst, err := ptypes.MarshalAny(manager)
+		if err != nil {
+			continue
+		}
+
+		// generate tls cert
+		cert, key := c.getCert(host, lis)
+		tls := &tlsv3.DownstreamTlsContext{
+			CommonTlsContext: &tlsv3.CommonTlsContext{
+				TlsCertificates: []*tlsv3.TlsCertificate{
+					&tlsv3.TlsCertificate{
+						PrivateKey: &corev3.DataSource{
+							Specifier: &corev3.DataSource_InlineBytes{
+								InlineBytes: key,
+							},
+						},
+						CertificateChain: &corev3.DataSource{
+							Specifier: &corev3.DataSource_InlineBytes{
+								InlineBytes: cert,
+							},
+						},
+					},
+				},
+				//TODO: 使用sds
+				// TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
+				// 	&tlsv3.SdsSecretConfig{
+				// 		SdsConfig: makeConfigSource(),
+				// 	},
+				// },
+			},
+		}
+		pbtls, err := ptypes.MarshalAny(tls)
+		if err != nil {
+			continue
+		}
+		filterChain := &listener.FilterChain{
+			FilterChainMatch: &listener.FilterChainMatch{
+				ServerNames: []string{host},
+			},
+			TransportSocket: &corev3.TransportSocket{
+				Name: "envoy.transport_sockets.tls",
+				ConfigType: &corev3.TransportSocket_TypedConfig{
+					TypedConfig: pbtls,
+				},
+			},
+			Filters: []*listener.Filter{{
+				Name: wellknown.HTTPConnectionManager,
+				ConfigType: &listener.Filter_TypedConfig{
+					TypedConfig: pbst,
+				},
+			}},
+		}
+		filterChains = append(filterChains, filterChain)
+	}
+	return filterChains, routers
 }
 
 func (c *ingressController) getCert(host string, lis *core.IngressListener) ([]byte, []byte) {
