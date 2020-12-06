@@ -272,7 +272,7 @@ export default {
     list: function () {
       let _that = this;
        _that.$store.commit('SetCurrentNamespace',_that.namespace);
-      this.$call("system.admin.ingress.get", {
+      this.$call("system.admin.ingressRoute.get", {
         namespace: _that.namespace,
         listener:_that.listener,
       }).then((resp) => {
@@ -300,7 +300,7 @@ export default {
           this.overlay = true;
           _that.delDialog = false;
           this.$call(
-            "system.admin.ingress.delete",
+            "system.admin.ingressRoute.delete",
             this.actionParam.args
           ).then(() => {
             _that.list();
@@ -314,7 +314,8 @@ export default {
           let args = yaml.safeLoad(_that.routeYaml);
           args.name = this.actionParam.args.name;
           args.namespace = this.namespace;
-          this.$call("system.admin.ingress.put", args).then(() => {
+          args.listener = this.listener;
+          this.$call("system.admin.ingressRoute.put", args).then(() => {
             _that.initActionParam();
             _that.dialog = false;
             _that.list();

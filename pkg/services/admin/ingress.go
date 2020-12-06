@@ -105,20 +105,20 @@ func (s *service) DeleteIngressListener(args interface{}) *core.APIReply {
 	return core.NewAPIReply("")
 }
 
-func (s *service) regIngress(ctx context.Context, action string, args interface{}) *core.APIReply {
+func (s *service) regIngressRoute(ctx context.Context, action string, args interface{}) *core.APIReply {
 	switch action {
 	case "get":
-		return s.GetIngress(args)
+		return s.GetIngressRoute(args)
 	case "put":
-		return s.PutIngress(args)
+		return s.PutIngressRoute(args)
 	case "delete":
-		return s.DeleteIngress(args)
+		return s.DeleteIngressRoute(args)
 	}
 	return e.MethodNotFoundMethod()
 }
 
-func (s *service) GetIngress(args interface{}) *core.APIReply {
-	var ingress core.Ingress
+func (s *service) GetIngressRoute(args interface{}) *core.APIReply {
+	var ingress core.IngressRoute
 	err := unmarshalArgs(args, &ingress)
 	if err != nil {
 		return e.InvalidParameterError(err)
@@ -129,17 +129,17 @@ func (s *service) GetIngress(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InternalError(err)
 	}
-	ingresses := make([]core.Ingress, 0)
+	ingresses := make([]core.IngressRoute, 0)
 	for _, kv := range kvs {
-		ing := new(core.Ingress)
+		ing := new(core.IngressRoute)
 		ing.Parse(kv.Value)
 		ingresses = append(ingresses, *ing)
 	}
 	return core.NewAPIReply(ingresses)
 }
 
-func (s *service) PutIngress(args interface{}) *core.APIReply {
-	var ingress core.Ingress
+func (s *service) PutIngressRoute(args interface{}) *core.APIReply {
+	var ingress core.IngressRoute
 	err := unmarshalArgs(args, &ingress)
 	if err != nil {
 		return e.InvalidParameterError(err)
@@ -156,8 +156,8 @@ func (s *service) PutIngress(args interface{}) *core.APIReply {
 	return core.NewAPIReply(ingress)
 }
 
-func (s *service) DeleteIngress(args interface{}) *core.APIReply {
-	var ingress core.Ingress
+func (s *service) DeleteIngressRoute(args interface{}) *core.APIReply {
+	var ingress core.IngressRoute
 	err := unmarshalArgs(args, &ingress)
 	if err != nil {
 		return e.InvalidParameterError(err)

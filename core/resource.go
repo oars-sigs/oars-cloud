@@ -161,8 +161,8 @@ func (l *IngressListener) Parse(s string) error {
 	return json.Unmarshal([]byte(s), l)
 }
 
-//Ingress 入口
-type Ingress struct {
+//IngressRoute 入口路由
+type IngressRoute struct {
 	Version   string        `json:"version"`
 	Name      string        `json:"name"`
 	Namespace string        `json:"namespace"`
@@ -173,14 +173,14 @@ type Ingress struct {
 }
 
 //String ...
-func (ingress *Ingress) String() string {
-	d, _ := json.Marshal(ingress)
+func (route *IngressRoute) String() string {
+	d, _ := json.Marshal(route)
 	return string(d)
 }
 
 //Parse ...
-func (ingress *Ingress) Parse(s string) error {
-	return json.Unmarshal([]byte(s), ingress)
+func (route *IngressRoute) Parse(s string) error {
+	return json.Unmarshal([]byte(s), route)
 }
 
 //IngressRule Ingress规则

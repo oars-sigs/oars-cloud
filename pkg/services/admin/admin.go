@@ -32,8 +32,8 @@ func (s *service) Call(ctx context.Context, resource, action string, args interf
 		r = s.regEndpoint(ctx, action, args)
 	case "ingressListener":
 		r = s.regIngressListener(ctx, action, args)
-	case "ingress":
-		r = s.regIngress(ctx, action, args)
+	case "ingressRoute":
+		r = s.regIngressRoute(ctx, action, args)
 	default:
 		r = e.MethodNotFoundMethod()
 	}

@@ -86,7 +86,7 @@ func (c *ingressController) initCache() (lrev int64, irev int64, err error) {
 		return
 	}
 	for _, kv := range kvs {
-		r := new(core.Ingress)
+		r := new(core.IngressRoute)
 		err = r.Parse(kv.Value)
 		if err != nil {
 			return
@@ -147,7 +147,7 @@ func (c *ingressController) watchIngress(rev int64, stopCh <-chan struct{}) erro
 			if !res.Put {
 				kv = res.PrevKV
 			}
-			ingress := new(core.Ingress)
+			ingress := new(core.IngressRoute)
 			err := ingress.Parse(kv.Value)
 			if err != nil {
 				log.Error(err)
@@ -196,7 +196,7 @@ func (c *ingressController) updateHandle() {
 	}
 	rules := make(map[string]map[string]*ingressRs)
 	c.icache.Range(func(k, v interface{}) bool {
-		ingress := v.(*core.Ingress)
+		ingress := v.(*core.IngressRoute)
 		if _, ok := rules[ingress.Listener]; !ok {
 			rules[ingress.Listener] = make(map[string]*ingressRs)
 		}
