@@ -21,7 +21,7 @@ func newNodec(kv core.KVStore) *nodeController {
 
 func (c *nodeController) runNodec(stopCh chan struct{}) error {
 	c.store = edpStore.New(c.kv)
-	lister, err := edpStore.NewLister(c.kv, &core.Endpoint{Namespace: "admin", Service: "node"}, &core.ResourceEventHandle{})
+	lister, err := edpStore.NewLister(c.kv, &core.Endpoint{Namespace: "system", Service: "node"}, &core.ResourceEventHandle{})
 	if err != nil {
 		return err
 	}

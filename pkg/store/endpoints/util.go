@@ -13,6 +13,7 @@ func getPrefixKey(selector *core.Endpoint) string {
 		if selector.Service != "" {
 			prefix += selector.Service + "/"
 		}
+		prefix += selector.Name
 	}
 	return prefix
 }
