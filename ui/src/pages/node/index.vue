@@ -22,15 +22,15 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in nodes" :key="item.hostname">
-            <td>{{ item.hostname }}</td>
-            <td>{{ item.hostIP }}</td>
-            <td>{{ item.hostInfo.host.os }}</td>
-            <td>{{ item.hostInfo.host.kernelArch }}</td>
-            <td>{{ item.hostInfo.host.kernelVersion }}</td>
-            <td>{{ item.hostInfo.logicalCores }}</td>
-            <td>{{ (item.hostInfo.memory/1024/1024/1024).toFixed(2) }}Gi</td>
-            <td>{{ item.state }}</td>
+          <tr v-for="item in nodes" :key="item.status.id">
+            <td>{{ item.status.id }}</td>
+            <td>{{ item.status.ip }}</td>
+            <td>{{ item.status.hostInfo.host.os }}</td>
+            <td>{{ item.status.hostInfo.host.kernelArch }}</td>
+            <td>{{ item.status.hostInfo.host.kernelVersion }}</td>
+            <td>{{ item.status.hostInfo.logicalCores }}</td>
+            <td>{{ (item.status.hostInfo.memory/1024/1024/1024).toFixed(2) }}Gi</td>
+            <td>{{ item.status.state }}</td>
           </tr>
         </tbody>
       </template>

@@ -1,4 +1,4 @@
-package agent
+package worker
 
 import (
 	"context"
@@ -19,11 +19,11 @@ type rpcServer struct {
 
 func (s *rpcServer) EndpointRestart(endpoint *core.Endpoint, reply *core.APIReply) error {
 	ctx := context.Background()
-	return s.d.Restart(ctx, endpoint.ID)
+	return s.d.Restart(ctx, endpoint.Status.ID)
 }
 
 func (s *rpcServer) EndpointStop(endpoint *core.Endpoint, reply *core.APIReply) error {
-	return s.d.Stop(context.Background(), endpoint.ID)
+	return s.d.Stop(context.Background(), endpoint.Status.ID)
 }
 
 func (s *rpcServer) EndpointLog(opt *core.EndpointLogOpt, reply *core.APIReply) error {

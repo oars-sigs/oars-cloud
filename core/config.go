@@ -10,7 +10,9 @@ type Config struct {
 
 //ServerConfig 服务端配置
 type ServerConfig struct {
-	Port int `envconfig:"SERVER_PORT"  default:"8801"`
+	Port int    `envconfig:"SERVER_PORT"  default:"8801"`
+	Name string `envconfig:"SERVER_NAME"  default:"server"`
+	Host string `envconfig:"SERVER_HOST"  default:"127.0.0.1"`
 	TLS  TLSConfig
 }
 

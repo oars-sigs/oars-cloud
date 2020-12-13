@@ -1,4 +1,4 @@
-package agent
+package worker
 
 import (
 	"context"
@@ -20,8 +20,14 @@ func TestDocker(t *testing.T) {
 	}
 	ctx := context.Background()
 	//d.ImagePull(context.Background())
-	//l, err := d.List(context.Background())
-	err = d.Remove(ctx, "a97a38a0a704aa919f750735cabceca6f6bdd535f1fdf327be01cedf93c6bccb")
-	t.Log(err)
+	l, err := d.List(ctx)
+	for _, c := range l {
+		for kind, netw := range c.NetworkSettings.Networks {
+			t.Log(c.Names, kind, netw)
+		}
+
+	}
+	//err = d.Remove(ctx, "a97a38a0a704aa919f750735cabceca6f6bdd535f1fdf327be01cedf93c6bccb")
+
 	//New()
 }

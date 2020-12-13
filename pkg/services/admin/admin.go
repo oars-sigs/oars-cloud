@@ -5,17 +5,33 @@ import (
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
+	"github.com/oars-sigs/oars-cloud/pkg/store/endpoints"
 )
 
 type service struct {
-	store core.KVStore
+	store    core.KVStore
+	edpStore core.EndpointStore
 }
 
 //New admin api
-func New(store core.KVStore) core.ServiceInterface {
-	s := &service{store}
+func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
+	s := &service{
+		store:    store,
+		edpStore: endpoints.New(store),
+	}
 	s.PutNamespace(core.Namespace{Name: "system"})
 	s.PutService(core.Service{Namespace: "system", Name: "admin", Kind: "runtime"})
+	s.PutService(core.Service{Namespace: "system", Name: "node", Kind: "runtime"})
+	s.edpStore.Put(context.Background(), &core.Endpoint{
+		Name:      cfg.Server.Name,
+		Namespace: "system",
+		Service:   "admin",
+		Status: &core.EndpointStatus{
+			ID:    cfg.Server.Name,
+			IP:    cfg.Server.Host,
+			State: "running",
+		},
+	}, &core.PutOptions{})
 	return s
 }
 

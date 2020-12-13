@@ -5,10 +5,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/oars-sigs/oars-cloud/pkg/agent"
 	"github.com/oars-sigs/oars-cloud/pkg/config"
 	"github.com/oars-sigs/oars-cloud/pkg/etcd"
 	"github.com/oars-sigs/oars-cloud/pkg/version"
+	"github.com/oars-sigs/oars-cloud/pkg/worker"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -28,6 +28,10 @@ var workerCmd = &cobra.Command{
 			log.Error(err)
 			os.Exit(-1)
 		}
-		agent.Start(store, cfg.Node)
+		err = worker.Start(store, cfg.Node)
+		if err != nil {
+			log.Error(err)
+			os.Exit(-1)
+		}
 	},
 }

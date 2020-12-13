@@ -6,7 +6,7 @@ import (
 
 //Start 启动controller
 func Start(store core.KVStore, cfg *core.Config, stopCh <-chan struct{}) {
-	nodec := &nodeController{store: store}
+	nodec := newNodec(store)
 	ingressc := newIngress(store, cfg)
 	nodecStopCh := make(chan struct{})
 	go nodec.runNodec(nodecStopCh)

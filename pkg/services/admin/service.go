@@ -25,6 +25,9 @@ func (s *service) PutService(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
+	if !nameRegex.MatchString(svc.Name) {
+		return e.InvalidParameterError()
+	}
 	ctx := context.TODO()
 	v := core.KV{
 		Key:   "services/svc/namespaces/" + svc.Namespace + "/" + svc.Name,

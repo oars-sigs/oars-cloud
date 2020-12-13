@@ -34,8 +34,6 @@
         <thead>
           <tr>
             <th class="text-left">端点</th>
-            <th class="text-left">命名空间</th>
-            <th class="text-left">服务</th>
             <th class="text-left">节点</th>
             <th>状态</th>
             <th>创建时间</th>
@@ -44,16 +42,14 @@
         </thead>
         <tbody>
           <tr v-for="item in endpoints" :key="item.id">
-            <td>{{ item.name }}</td>
-            <td>{{ item.namespace }}</td>
-            <td>{{ item.service }}</td>
-            <td>{{ item.hostname }}</td>
+            <td>{{ item.namespace }}_{{ item.service }}_{{ item.name }}</td>
+            <td>{{ item.status.node.hostname }}</td>
             <td>
               <v-tooltip right>
                 <template v-slot:activator="{ on, attrs }">
-                  <span v-on="on" v-bind="attrs">{{ item.state }}</span>
+                  <span v-on="on" v-bind="attrs">{{ item.status.state }}</span>
                 </template>
-                <span>{{ item.status }}</span>
+                <span>{{ item.status.stateDetail }}</span>
               </v-tooltip>
             </td>
             <td>{{ item.created | formatT }}</td>
@@ -170,6 +166,7 @@ export default {
       actionParam: {},
       logs: "",
       term: {},
+      timer: null,
     };
   },
   filters: {
@@ -186,7 +183,9 @@ export default {
     this.initActionParam();
     this.overlay = true;
     this.listNamespace();
-    this.list();
+  },
+  beforeDestroy() {
+      clearInterval(this.timer);
   },
   methods: {
     list: function () {
@@ -226,6 +225,7 @@ export default {
         });
         _that.service = _that.services[0].value;
         _that.list();
+        _that.timer = setInterval(_that.list, 5000);
       });
     },
     initActionParam: function () {
@@ -257,8 +257,8 @@ export default {
           break;
         case "log":
           var param = {
-            id: this.actionParam.args.id,
-            hostname:  this.actionParam.args.hostname,
+            id: this.actionParam.args.status.id,
+            hostname:  this.actionParam.args.status.node.hostname,
             tail: "100",
           };
           this.$call("system.admin.endpoint.log", param).then((resp) => {
@@ -266,14 +266,13 @@ export default {
             var data = resp.data.replace(/[\r]/g, "\n");
             data = data.substring(8);
             _that.logs = data.replace(/\n(.{8})/g, "\r\n");
-            // _that.logs="sss<br/>sss"
           });
           break;
         case "shell":{
           let queryParam = {
-            hostname:  this.actionParam.args.hostname,     
-            id: this.actionParam.args.id, 
-            name: this.actionParam.args.name, 
+            hostname:  this.actionParam.args.status.node.hostname,     
+            id: this.actionParam.args.status.id, 
+            name: this.actionParam.args.namespace+'_'+this.actionParam.args.service+'_'+this.actionParam.args.name,
           }
           this.$router.push({ 
             path:'/exec',  

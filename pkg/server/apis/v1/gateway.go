@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"fmt"
+
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 	"github.com/oars-sigs/oars-cloud/pkg/server/apis/base"
@@ -42,6 +44,7 @@ func (c *GatewayController) Exec(ctx *gin.Context) {
 	var reply core.APIReply
 	err := c.Mgr.Admin.Call(ctx, "endpoint", "exec", nil, &reply)
 	if err != nil {
+		fmt.Println(err)
 		return
 	}
 }

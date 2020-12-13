@@ -25,8 +25,8 @@ func (s *service) PutNamespace(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	if ns.Name == "" {
-		return e.InvalidParameterError(err)
+	if !nameRegex.MatchString(ns.Name) {
+		return e.InvalidParameterError()
 	}
 	ctx := context.TODO()
 	v := core.KV{

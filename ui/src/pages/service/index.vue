@@ -269,7 +269,7 @@ export default {
       let _that = this;
       this.$call("system.admin.endpoint.get",{namespace:"system",service:"node"}).then((resp) => {
         resp.data.forEach((element) => {
-          _that.nodes.push(element.hostname);
+          _that.nodes.push(element.name);
         });
         this.overlay = false;
       });

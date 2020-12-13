@@ -1,4 +1,4 @@
-package agent
+package worker
 
 import (
 	"context"
@@ -22,9 +22,9 @@ import (
 	"github.com/oars-sigs/oars-cloud/core"
 )
 
-func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
+func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) error {
 	mounts := make([]mount.Mount, 0)
-	for _, v := range svc.Docker.Volumes {
+	for _, v := range svc.Volumes {
 		ms := strings.Split(v, ":")
 		if len(ms) != 2 {
 			return errors.New("volumes format error")
@@ -36,8 +36,9 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 			Type:   mount.Type("bind"),
 		})
 	}
-	for k, v := range svc.Docker.ConfigMap {
-		cfgPath := d.node.WorkDir + "/configmap/" + svc.Namespace + "/" + svc.Name + "/" + strings.TrimPrefix(k, "/")
+	for k, v := range svc.ConfigMap {
+		edp := d.getEndpointByContainerName(svc.Name)
+		cfgPath := d.node.WorkDir + "/configmap/" + edp.Namespace + "/" + edp.Service + "/" + strings.TrimPrefix(k, "/")
 		err := os.MkdirAll(filepath.Dir(cfgPath), 0755)
 		if err != nil {
 			return err
@@ -52,31 +53,31 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 			Type:   mount.Type("bind"),
 		})
 	}
-	if svc.Docker.Port == nil {
-		svc.Docker.Port = new(core.ContainerPort)
+	if svc.Port == nil {
+		svc.Port = new(core.ContainerPort)
 	}
-	if svc.Docker.Port.ContainerPort == 0 {
+	if svc.Port.ContainerPort == 0 {
 		port, err := getFreePort()
 		if err != nil {
 			return err
 		}
-		svc.Docker.Port.ContainerPort = port
+		svc.Port.ContainerPort = port
 	}
-	if svc.Docker.Port.Protocol == "" {
-		svc.Docker.Port.Protocol = "tcp"
+	if svc.Port.Protocol == "" {
+		svc.Port.Protocol = "tcp"
 	}
-	if svc.Docker.Environment == nil {
-		svc.Docker.Environment = make([]string, 0)
+	if svc.Environment == nil {
+		svc.Environment = make([]string, 0)
 	}
-	port := fmt.Sprintf("SERVICE_PORT=%d", svc.Docker.Port.ContainerPort)
-	svc.Docker.Environment = append(svc.Docker.Environment, port)
+	port := fmt.Sprintf("SERVICE_PORT=%d", svc.Port.ContainerPort)
+	svc.Environment = append(svc.Environment, port)
 
-	if svc.Docker.Resources == nil {
-		svc.Docker.Resources = new(core.ContainerResource)
+	if svc.Resources == nil {
+		svc.Resources = new(core.ContainerResource)
 	}
 	ports := make(nat.PortMap)
 	portSet := make(nat.PortSet)
-	for _, p := range svc.Docker.Ports {
+	for _, p := range svc.Ports {
 		portStrs := strings.Split(p, ":")
 		if len(portStrs) < 2 || len(portStrs) > 3 {
 			continue
@@ -98,59 +99,57 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 		}
 		portSet[nat.Port(containerPort)] = struct{}{}
 	}
-	for _, expose := range svc.Docker.Expose {
+	for _, expose := range svc.Expose {
 		portSet[nat.Port(expose)] = struct{}{}
 	}
 	cfg := &container.Config{
-		Image:        svc.Docker.Image,
+		Image:        svc.Image,
 		AttachStdout: true,
 		AttachStderr: true,
-		Env:          svc.Docker.Environment,
-		Cmd:          strslice.StrSlice(svc.Docker.Command),
-		Shell:        strslice.StrSlice(svc.Docker.Shell),
-		Labels: map[string]string{
-			"serviceAddress": d.serviceAddress(svc),
-			"servicePort":    fmt.Sprintf("%d", svc.Docker.Port.ContainerPort),
-		},
-		Entrypoint:   strslice.StrSlice(svc.Docker.Entrypoint),
-		StopSignal:   svc.Docker.StopSignal,
-		WorkingDir:   svc.Docker.WorkingDir,
+		Env:          svc.Environment,
+		Cmd:          strslice.StrSlice(svc.Command),
+		Shell:        strslice.StrSlice(svc.Shell),
+		Labels:       svc.Labels,
+		Entrypoint:   strslice.StrSlice(svc.Entrypoint),
+		StopSignal:   svc.StopSignal,
+		WorkingDir:   svc.WorkingDir,
 		ExposedPorts: portSet,
 	}
 
-	netMode := "host"
-	if svc.Docker.NetworkMode != "" {
-		netMode = svc.Docker.NetworkMode
+	cfg.Labels[core.ServicePortLabelKey] = fmt.Sprintf("%d", svc.Port.ContainerPort)
+	netMode := "bridge"
+	if svc.NetworkMode != "" {
+		netMode = svc.NetworkMode
 	}
 
 	hostCfg := &container.HostConfig{
 		RestartPolicy: container.RestartPolicy{
-			Name: svc.Docker.Restart,
+			Name: svc.Restart,
 		},
 		NetworkMode: container.NetworkMode(netMode),
 		Mounts:      mounts,
 		DNS:         []string{"127.0.0.1"},
 		Resources: container.Resources{
-			Memory:   svc.Docker.Resources.Memory * 1024,
-			CPUQuota: int64(svc.Docker.Resources.CPU * float64(100000)),
+			Memory:   svc.Resources.Memory * 1024,
+			CPUQuota: int64(svc.Resources.CPU * float64(100000)),
 		},
-		CapAdd:       strslice.StrSlice(svc.Docker.CapAdd),
-		CapDrop:      strslice.StrSlice(svc.Docker.CapDrop),
-		ExtraHosts:   svc.Docker.ExtraHosts,
-		Privileged:   svc.Docker.Privileged,
-		SecurityOpt:  svc.Docker.SecurityOpt,
-		PidMode:      container.PidMode(svc.Docker.Pid),
-		Sysctls:      svc.Docker.Sysctls,
+		CapAdd:       strslice.StrSlice(svc.CapAdd),
+		CapDrop:      strslice.StrSlice(svc.CapDrop),
+		ExtraHosts:   svc.ExtraHosts,
+		Privileged:   svc.Privileged,
+		SecurityOpt:  svc.SecurityOpt,
+		PidMode:      container.PidMode(svc.Pid),
+		Sysctls:      svc.Sysctls,
 		PortBindings: ports,
 	}
 
 	hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
-	if svc.Docker.ImagePullPolicy == "" {
-		svc.Docker.ImagePullPolicy = core.ImagePullIfNotPresent
+	if svc.ImagePullPolicy == "" {
+		svc.ImagePullPolicy = core.ImagePullIfNotPresent
 	}
-	if svc.Docker.ImagePullPolicy == core.ImagePullAlways || svc.Docker.ImagePullPolicy == core.ImagePullIfNotPresent {
+	if svc.ImagePullPolicy == core.ImagePullAlways || svc.ImagePullPolicy == core.ImagePullIfNotPresent {
 		pullFlag := true
-		if svc.Docker.ImagePullPolicy == core.ImagePullIfNotPresent {
+		if svc.ImagePullPolicy == core.ImagePullIfNotPresent {
 			imgs, err := d.c.ImageList(ctx, types.ImageListOptions{})
 			if err != nil {
 				return err
@@ -158,7 +157,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 			imgExist := false
 			for _, img := range imgs {
 				for _, tag := range img.RepoTags {
-					if tag == svc.Docker.Image {
+					if tag == svc.Image {
 						imgExist = true
 					}
 				}
@@ -166,7 +165,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 			pullFlag = !imgExist
 		}
 		if pullFlag {
-			distributionRef, err := reference.ParseNormalizedNamed(svc.Docker.Image)
+			distributionRef, err := reference.ParseNormalizedNamed(svc.Image)
 			if err != nil {
 				return err
 			}
@@ -182,7 +181,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.Service) error {
 		}
 	}
 
-	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Docker.Name)
+	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)
 	go func() {
 		err = d.Start(ctx, ct.ID)
 		if err != nil {
@@ -223,6 +222,10 @@ func (d *daemon) List(ctx context.Context) ([]types.Container, error) {
 	return d.c.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 }
 
+func (d *daemon) Inspect(ctx context.Context, id string) (types.ContainerJSON, error) {
+	return d.c.ContainerInspect(context.Background(), id)
+}
+
 func (d *daemon) Restart(ctx context.Context, id string) error {
 	timeout := 30 * time.Second
 	return d.c.ContainerRestart(ctx, id, &timeout)
@@ -233,6 +236,7 @@ func (d *daemon) Log(ctx context.Context, id, tail, since string) (string, error
 		Tail:       tail,
 		Since:      since,
 		ShowStdout: true,
+		ShowStderr: true,
 	})
 	if err != nil {
 		return "", err

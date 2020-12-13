@@ -1,10 +1,11 @@
-package agent
+package worker
 
 import (
+	"context"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
-	"github.com/oars-sigs/oars-cloud/pkg/agent/metrics"
+	"github.com/oars-sigs/oars-cloud/pkg/worker/metrics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,18 +28,21 @@ func (d *daemon) putNode() {
 	}
 	endpoint := &core.Endpoint{
 		Name:      d.node.Hostname,
-		ID:        d.node.Hostname,
 		Namespace: "system",
 		Service:   "node",
-		State:     "running",
-		Status:    "running",
-		Hostname:  d.node.Hostname,
-		HostIP:    d.node.IP,
-		Port:      d.node.Port,
-		NodeInfo:  nodeInfo,
-		Updated:   time.Now().Unix(),
+		Status: &core.EndpointStatus{
+			ID:       d.node.Hostname,
+			Port:     d.node.Port,
+			IP:       d.node.IP,
+			NodeInfo: nodeInfo,
+			State:    "running",
+			Node: core.Node{
+				Hostname: d.node.Hostname,
+				IP:       d.node.IP,
+			},
+		},
 	}
-	err = d.putEndPoint(endpoint)
+	_, err = d.edpstore.Put(context.Background(), endpoint, &core.PutOptions{})
 	if err != nil {
 		logrus.Error(err)
 	}

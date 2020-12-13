@@ -77,7 +77,6 @@ export default {
     items: [
       {
         action: "mdi-view-dashboard",
-        active: true,
         title: "集群",
         items: [
           { title: "集群概览", path: "/" },
@@ -113,6 +112,17 @@ export default {
     itemIndex: 0,
   }),
   components: {},
+  created(){
+    let _that=this
+    this.items.forEach((element,index )=> {
+      element.items.forEach(element => {
+          if (_that.$route.path==element.path){
+            console.log(element.path) 
+            _that.items[index].active=true
+          }
+      });
+    });
+  },
 };
 </script>
 

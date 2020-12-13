@@ -1,7 +1,8 @@
-package agent
+package worker
 
 import (
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 )
 
 func (d *daemon) dnsServer() {
+	err := d.cacheEndpoint()
+	if err != nil {
+		logrus.Error(err)
+		os.Exit(-1)
+	}
 	handler := dns.NewServeMux()
 	handler.HandleFunc(".", d.dnsHandle)
 	server := &dns.Server{
@@ -22,9 +28,10 @@ func (d *daemon) dnsServer() {
 		WriteTimeout: 30 * time.Second,
 	}
 	logrus.Infof("Startlistener on %s", ":53")
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		logrus.Error(err)
+		os.Exit(-1)
 	}
 }
 
@@ -35,16 +42,18 @@ func (d *daemon) dnsHandle(w dns.ResponseWriter, req *dns.Msg) {
 	dom = strings.TrimSuffix(dom, ".")
 	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		addrs := make([]string, 0)
-		d.endpointCache.Range(func(k, v interface{}) bool {
-			if endpoint, ok := v.(*core.Endpoint); ok {
-				if endpoint.State == "running" {
-					if endpoint.Service+"."+endpoint.Namespace == dom {
-						addrs = append(addrs, endpoint.HostIP)
-					}
+		resources, _ := d.edpLister.List()
+		for _, resource := range resources {
+			endpoint := resource.(*core.Endpoint)
+			if endpoint.Status.State == "running" {
+				if endpoint.Service+"."+endpoint.Namespace == dom {
+					addrs = append(addrs, endpoint.Status.IP)
+				}
+				if endpoint.Name+"."+endpoint.Service+"."+endpoint.Namespace == dom {
+					addrs = append(addrs, endpoint.Status.IP)
 				}
 			}
-			return true
-		})
+		}
 		if len(addrs) == 0 {
 			cli := &dns.Client{
 				Net:          "udp",

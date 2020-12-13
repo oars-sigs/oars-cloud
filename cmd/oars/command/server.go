@@ -37,7 +37,7 @@ var serverCmd = &cobra.Command{
 		go controller.Start(store, cfg, controllerCh)
 		mgr := &core.APIManager{
 			Cfg:   cfg,
-			Admin: admin.New(store),
+			Admin: admin.New(store, cfg),
 		}
 		go server.Start(mgr)
 		sigc := make(chan os.Signal)

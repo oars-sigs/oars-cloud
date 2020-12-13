@@ -37,24 +37,9 @@ func (s *service) GetEndPoint(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	key := fmt.Sprintf("services/endpoint/namespaces/%s/%s", endpoint.Namespace, endpoint.Service)
-	if endpoint.Service != "" {
-		key += "/"
-	}
-	if endpoint.Hostname != "" {
-		key += endpoint.Hostname
-	}
+
 	ctx := context.TODO()
-	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
-	if err != nil {
-		return e.InternalError(err)
-	}
-	endpoints := make([]core.Endpoint, 0)
-	for _, kv := range kvs {
-		endpoint := new(core.Endpoint)
-		endpoint.Parse(kv.Value)
-		endpoints = append(endpoints, *endpoint)
-	}
+	endpoints, err := s.edpStore.List(ctx, &endpoint, &core.ListOptions{})
 	return core.NewAPIReply(endpoints)
 }
 
@@ -64,7 +49,7 @@ func (s *service) RestartEndPoint(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	conn, err := s.getConn(endpoint.Hostname)
+	conn, err := s.getConn(endpoint.Status.Node.Hostname)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
@@ -80,16 +65,18 @@ func (s *service) getAddr(hostname string) (string, error) {
 	r := s.GetEndPoint(core.Endpoint{
 		Namespace: "system",
 		Service:   "node",
-		Hostname:  hostname,
 	})
 	if r.Code != core.ServiceSuccessCode {
 		return "", errors.New(r.SubCode)
 	}
-	res := r.Data.([]core.Endpoint)
-	if len(res) == 0 {
-		return "", errors.New("not found node")
+	res := r.Data.([]*core.Endpoint)
+	for _, ret := range res {
+		if ret.Status.ID == hostname {
+			return fmt.Sprintf("%s:%d", ret.Status.IP, ret.Status.Port), nil
+		}
 	}
-	return fmt.Sprintf("%s:%d", res[0].HostIP, res[0].Port), nil
+	return "", errors.New("not found node")
+
 }
 func (s *service) getConn(hostname string) (*rpc.Client, error) {
 	addr, err := s.getAddr(hostname)
@@ -106,7 +93,7 @@ func (s *service) StopEndPoint(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	conn, err := s.getConn(endpoint.Hostname)
+	conn, err := s.getConn(endpoint.Status.Node.Hostname)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
@@ -158,10 +145,12 @@ func (s *service) ExecEndPoint(cc context.Context, args interface{}) *core.APIRe
 
 	hostname := ctx.Param("hostname")
 	id := ctx.Param("id")
+
 	addr, err := s.getAddr(hostname)
 	if err != nil {
 		return core.NewAPIError(err)
 	}
+
 	addr = "ws://" + addr + "/exec?id=" + id
 	err = s.connExec(addr+"&cmd=bash", c)
 	if err != nil {
@@ -170,6 +159,7 @@ func (s *service) ExecEndPoint(cc context.Context, args interface{}) *core.APIRe
 			return core.NewAPIError(err)
 		}
 	}
+	fmt.Println(addr)
 	return core.NewAPIReply("")
 }
 

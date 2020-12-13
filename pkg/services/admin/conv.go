@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"regexp"
 )
 
 //unmarshalArgs 解析参数
@@ -61,3 +62,11 @@ func unmarshalArgs(in, out interface{}) error {
 	err = json.Unmarshal(data, out)
 	return err
 }
+
+const (
+	nameRegexString = `^[a-zA-Z]([a-zA-Z0-9\-]+)*[a-zA-Z0-9]$`
+)
+
+var (
+	nameRegex = regexp.MustCompile(nameRegexString)
+)

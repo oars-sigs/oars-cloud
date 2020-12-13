@@ -5,6 +5,7 @@ import "encoding/json"
 //ContainerService 容器服务
 type ContainerService struct {
 	Name            string                 `json:"-"`
+	Labels          map[string]string      `json:"labels"`
 	Image           string                 `json:"image,omitempty"`
 	Volumes         []string               `json:"volumes,omitempty"`
 	DependsOn       []string               `json:"depends_on,omitempty"`
@@ -50,6 +51,14 @@ func (svc *ContainerService) Parse(s string) error {
 	return json.Unmarshal([]byte(s), svc)
 }
 
+func (svc *ContainerService) ID() string {
+	return svc.Name
+}
+
+func (svc *ContainerService) New() Resource {
+	return new(ContainerService)
+}
+
 //ContainerPort 容器端口
 type ContainerPort struct {
 	Proxy         bool   `json:"proxy,omitempty"`
@@ -84,10 +93,4 @@ func (e *StrSlice) UnmarshalJSON(b []byte) error {
 
 	*e = p
 	return nil
-}
-
-//ContainerValues 容器自定义配置参数
-type ContainerValues struct {
-	Global   map[string]interface{}
-	Endpoint Endpoint
 }
