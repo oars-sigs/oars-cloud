@@ -56,7 +56,7 @@ func (s *edpstore) Put(ctx context.Context, arg *core.Endpoint, opts *core.PutOp
 		endpoint.Created = time.Now().Unix()
 	}
 	arg.Updated = time.Now().Unix()
-	arg.Created = endpoint.Updated
+	arg.Created = endpoint.Created
 	v := core.KV{
 		Key:   getKey(arg),
 		Value: arg.String(),

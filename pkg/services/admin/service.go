@@ -29,11 +29,7 @@ func (s *service) PutService(args interface{}) *core.APIReply {
 		return e.InvalidParameterError()
 	}
 	ctx := context.TODO()
-	v := core.KV{
-		Key:   "services/svc/namespaces/" + svc.Namespace + "/" + svc.Name,
-		Value: svc.String(),
-	}
-	err = s.store.Put(ctx, v)
+	_, err = s.svcStore.Put(ctx, &svc, &core.PutOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -47,11 +43,7 @@ func (s *service) DeleteService(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	ctx := context.TODO()
-	err = s.store.Delete(ctx, "services/method/namespaces/"+svc.Namespace+"/"+svc.Name+"/", core.KVOption{WithPrefix: true})
-	if err != nil {
-		return e.InternalError(err)
-	}
-	err = s.store.Delete(ctx, "services/svc/namespaces/"+svc.Namespace+"/"+svc.Name, core.KVOption{})
+	err = s.svcStore.Delete(ctx, &svc, &core.DeleteOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -65,15 +57,9 @@ func (s *service) GetService(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	ctx := context.TODO()
-	kvs, err := s.store.Get(ctx, "services/svc/namespaces/"+svc.Namespace+"/"+svc.Name, core.KVOption{WithPrefix: true})
+	svcs, err := s.svcStore.List(ctx, &svc, &core.ListOptions{})
 	if err != nil {
 		return e.InternalError(err)
-	}
-	svcs := make([]core.Service, 0)
-	for _, kv := range kvs {
-		svc := new(core.Service)
-		svc.Parse(kv.Value)
-		svcs = append(svcs, *svc)
 	}
 	return core.NewAPIReply(svcs)
 }

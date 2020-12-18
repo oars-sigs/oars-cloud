@@ -1,8 +1,12 @@
 package services
 
-import "github.com/oars-sigs/oars-cloud/core"
+import (
+	"fmt"
 
-func getKey(selector *core.Service) string {
+	"github.com/oars-sigs/oars-cloud/core"
+)
+
+func getPrefixKey(selector *core.Service) string {
 	prefix := "services/svc/namespaces/"
 	if selector.Namespace != "" {
 		prefix += selector.Namespace + "/"
@@ -11,6 +15,10 @@ func getKey(selector *core.Service) string {
 		prefix += selector.Name
 	}
 	return prefix
+}
+
+func getKey(selector *core.Service) string {
+	return fmt.Sprintf("services/svc/namespaces/%s/%s", selector.Namespace, selector.Name)
 }
 
 func isContain(src, selector *core.Service) bool {

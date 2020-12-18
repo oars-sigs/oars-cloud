@@ -6,18 +6,29 @@ import (
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 	"github.com/oars-sigs/oars-cloud/pkg/store/endpoints"
+	"github.com/oars-sigs/oars-cloud/pkg/store/ingresses"
+	"github.com/oars-sigs/oars-cloud/pkg/store/namespaces"
+	"github.com/oars-sigs/oars-cloud/pkg/store/services"
 )
 
 type service struct {
-	store    core.KVStore
-	edpStore core.EndpointStore
+	store                core.KVStore
+	edpStore             core.EndpointStore
+	nsStore              core.NamespaceStore
+	svcStore             core.ServiceStore
+	ingressRouteStore    core.IngressRouteStore
+	ingressListenerStore core.IngressListenerStore
 }
 
 //New admin api
 func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
 	s := &service{
-		store:    store,
-		edpStore: endpoints.New(store),
+		store:                store,
+		edpStore:             endpoints.New(store),
+		nsStore:              namespaces.New(store),
+		svcStore:             services.New(store),
+		ingressRouteStore:    ingresses.NewRoute(store),
+		ingressListenerStore: ingresses.NewListener(store),
 	}
 	s.PutNamespace(core.Namespace{Name: "system"})
 	s.PutService(core.Service{Namespace: "system", Name: "admin", Kind: "runtime"})

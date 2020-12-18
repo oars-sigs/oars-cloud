@@ -85,5 +85,6 @@ func (svc *Service) ParseContainer(vars ServiceValues) (*ContainerService, error
 type ServiceStore interface {
 	List(ctx context.Context, arg *Service, opts *ListOptions) ([]*Service, error)
 	Get(ctx context.Context, arg *Service, opts *GetOptions) (*Service, error)
-	PutSpec(ctx context.Context, arg *Service, opts *PutOptions) (*Service, error)
+	Put(ctx context.Context, arg *Service, opts *PutOptions) (*Service, error)
+	Delete(ctx context.Context, arg *Service, opts *DeleteOptions) error
 }

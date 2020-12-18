@@ -2,25 +2,24 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 )
 
-type edpstore struct {
+type svcstore struct {
 	store core.KVStore
 }
 
 //New endpoint store
 func New(store core.KVStore) core.ServiceStore {
-	return &edpstore{store}
+	return &svcstore{store}
 }
 
-func (s *edpstore) List(ctx context.Context, arg *core.Service, opts *core.ListOptions) ([]*core.Service, error) {
+func (s *svcstore) List(ctx context.Context, arg *core.Service, opts *core.ListOptions) ([]*core.Service, error) {
 	endpoints := make([]*core.Service, 0)
-	key := fmt.Sprintf("services/endpoint/namespaces/%s/%s", arg.Namespace, arg.Name)
+	key := getPrefixKey(arg)
 	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
 	if err != nil {
 		return endpoints, err
@@ -33,8 +32,8 @@ func (s *edpstore) List(ctx context.Context, arg *core.Service, opts *core.ListO
 	return endpoints, nil
 }
 
-func (s *edpstore) Get(ctx context.Context, arg *core.Service, opts *core.GetOptions) (*core.Service, error) {
-	key := fmt.Sprintf("services/svc/namespaces/%s/%s/%s", arg.Namespace, arg.Name)
+func (s *svcstore) Get(ctx context.Context, arg *core.Service, opts *core.GetOptions) (*core.Service, error) {
+	key := getKey(arg)
 	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
 	if err != nil {
 		return nil, err
@@ -47,19 +46,19 @@ func (s *edpstore) Get(ctx context.Context, arg *core.Service, opts *core.GetOpt
 	return endpoint, nil
 }
 
-func (s *edpstore) PutSpec(ctx context.Context, arg *core.Service, opts *core.PutOptions) (*core.Service, error) {
-	endpoint, err := s.Get(ctx, arg, &core.GetOptions{})
+func (s *svcstore) Put(ctx context.Context, arg *core.Service, opts *core.PutOptions) (*core.Service, error) {
+	svc, err := s.Get(ctx, arg, &core.GetOptions{})
 	if err != nil {
 		if err != e.ErrResourceNotFound {
 			return arg, err
 		}
-		endpoint = new(core.Service)
-		endpoint.Created = time.Now().Unix()
+		svc = new(core.Service)
+		svc.Created = time.Now().Unix()
 	}
 	arg.Updated = time.Now().Unix()
-	arg.Created = endpoint.Updated
+	arg.Created = svc.Created
 	v := core.KV{
-		Key:   fmt.Sprintf("services/endpoint/namespaces/%s/%s", arg.Namespace, arg.Name),
+		Key:   getKey(arg),
 		Value: arg.String(),
 	}
 	err = s.store.Put(ctx, v)
@@ -67,4 +66,10 @@ func (s *edpstore) PutSpec(ctx context.Context, arg *core.Service, opts *core.Pu
 		return arg, err
 	}
 	return arg, nil
+}
+
+func (s *svcstore) Delete(ctx context.Context, arg *core.Service, opts *core.DeleteOptions) error {
+	key := getKey(arg)
+	err := s.store.Delete(ctx, key, core.KVOption{WithPrefix: true})
+	return err
 }

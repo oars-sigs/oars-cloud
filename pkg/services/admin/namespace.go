@@ -29,11 +29,7 @@ func (s *service) PutNamespace(args interface{}) *core.APIReply {
 		return e.InvalidParameterError()
 	}
 	ctx := context.TODO()
-	v := core.KV{
-		Key:   "namespaces/" + ns.Name,
-		Value: ns.String(),
-	}
-	err = s.store.Put(ctx, v)
+	_, err = s.nsStore.Put(ctx, &ns, &core.PutOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -44,19 +40,10 @@ func (s *service) DeleteNamespace(args interface{}) *core.APIReply {
 	var ns core.Namespace
 	err := unmarshalArgs(args, &ns)
 	if err != nil {
-		return e.InvalidParameterError(err)
+		return e.InternalError(err)
 	}
 	ctx := context.TODO()
-	err = s.store.Delete(ctx, "services/method/namespaces/"+ns.Name+"/", core.KVOption{WithPrefix: true})
-	if err != nil {
-		return e.InternalError(err)
-	}
-	err = s.store.Delete(ctx, "services/svc/namespaces/"+ns.Name+"/", core.KVOption{WithPrefix: true})
-	if err != nil {
-		return e.InternalError(err)
-	}
-
-	err = s.store.Delete(ctx, "namespaces/"+ns.Name, core.KVOption{})
+	err = s.nsStore.Delete(ctx, &ns, &core.DeleteOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -70,15 +57,9 @@ func (s *service) GetNamespace(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	ctx := context.TODO()
-	kvs, err := s.store.Get(ctx, "namespaces/"+ns.Name, core.KVOption{WithPrefix: true})
+	nss, err := s.nsStore.List(ctx, &ns, &core.ListOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
-	namespaces := make([]core.Namespace, 0)
-	for _, kv := range kvs {
-		ns := new(core.Namespace)
-		ns.Parse(kv.Value)
-		namespaces = append(namespaces, *ns)
-	}
-	return core.NewAPIReply(namespaces)
+	return core.NewAPIReply(nss)
 }
