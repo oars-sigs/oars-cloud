@@ -71,8 +71,9 @@ func (s *service) getAddr(hostname string) (string, error) {
 	if r.Code != core.ServiceSuccessCode {
 		return "", errors.New(r.SubCode)
 	}
-	res := r.Data.([]*core.Endpoint)
-	for _, ret := range res {
+	res := r.Data.([]core.Resource)
+	for _, v := range res {
+		ret := v.(*core.Endpoint)
 		if ret.Status.ID == hostname {
 			return fmt.Sprintf("%s:%d", ret.Status.IP, ret.Status.Port), nil
 		}

@@ -97,7 +97,7 @@ func (route *IngressRoute) ResourceKind() string {
 
 //ResourceKey ...
 func (route *IngressRoute) ResourceKey() string {
-	return "namespaces/" + route.Namespace + "/" + route.Name
+	return "namespaces/" + route.Namespace + "/listeners/" + route.Listener + "/" + route.Name
 }
 
 //ResourcePrefixKey ...
