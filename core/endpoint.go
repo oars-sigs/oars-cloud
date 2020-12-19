@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"encoding/json"
 )
 
@@ -13,15 +12,11 @@ type Node struct {
 
 //Endpoint 端点
 type Endpoint struct {
-	Version   string            `json:"version"`
-	Kind      string            `json:"kind"`
-	Name      string            `json:"name"`
-	Namespace string            `json:"namespace"`
-	Service   string            `json:"service"`
-	Labels    map[string]string `json:"labels,omitempty"`
-	Status    *EndpointStatus   `json:"status,omitempty"`
-	Created   int64             `json:"created,omitempty"`
-	Updated   int64             `json:"updated,omitempty"`
+	*ResourceMeta
+	Kind    string            `json:"kind"`
+	Service string            `json:"service"`
+	Labels  map[string]string `json:"labels,omitempty"`
+	Status  *EndpointStatus   `json:"status,omitempty"`
 }
 
 //EndpointStatus endpoint status
@@ -49,12 +44,38 @@ func (e *Endpoint) Parse(s string) error {
 
 //New ...
 func (e *Endpoint) New() Resource {
-	return new(Endpoint)
+	return &Endpoint{
+		ResourceMeta: new(ResourceMeta),
+	}
 }
 
-//ID ...
-func (e *Endpoint) ID() string {
-	return e.Namespace + "/" + e.Service + "/" + e.Name
+//ResourceGroup ...
+func (e *Endpoint) ResourceGroup() string {
+	return "services"
+}
+
+//ResourceKind ...
+func (e *Endpoint) ResourceKind() string {
+	return "endpoint"
+}
+
+//ResourceKey ...
+func (e *Endpoint) ResourceKey() string {
+	return "namespaces/" + e.Namespace + "/" + e.Service + "/" + e.Name
+}
+
+//ResourcePrefixKey ...
+func (e *Endpoint) ResourcePrefixKey() string {
+	if e.ResourceMeta == nil {
+		return "namespaces/"
+	}
+	if e.Namespace != "" {
+		if e.Service != "" {
+			return "namespaces/" + e.Namespace + "/" + e.Service + "/" + e.Name
+		}
+		return "namespaces/" + e.Namespace + "/"
+	}
+	return "namespaces/"
 }
 
 //EndpointLogOpt 日志输出
@@ -63,18 +84,4 @@ type EndpointLogOpt struct {
 	Hostname string `json:"hostname"`
 	Tail     string `json:"tail"`
 	Since    string `json:"since"`
-}
-
-//EndpointStore endpiont store
-type EndpointStore interface {
-	List(ctx context.Context, arg *Endpoint, opts *ListOptions) ([]*Endpoint, error)
-	Get(ctx context.Context, arg *Endpoint, opts *GetOptions) (*Endpoint, error)
-	Put(ctx context.Context, arg *Endpoint, opts *PutOptions) (*Endpoint, error)
-	Delete(ctx context.Context, arg *Endpoint, opts *DeleteOptions) error
-}
-
-//EndpointLister endpiont lister
-type EndpointLister interface {
-	List() (ret []*Endpoint)
-	Find(selector *Endpoint) (ret []*Endpoint)
 }

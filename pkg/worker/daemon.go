@@ -6,7 +6,7 @@ import (
 	"github.com/docker/docker/client"
 
 	"github.com/oars-sigs/oars-cloud/core"
-	edpStore "github.com/oars-sigs/oars-cloud/pkg/store/endpoints"
+	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 	"github.com/oars-sigs/oars-cloud/pkg/worker/metrics"
 )
 
@@ -15,7 +15,7 @@ type daemon struct {
 	store         core.KVStore
 	svcLister     core.ResourceLister
 	edpLister     core.ResourceLister
-	edpstore      core.EndpointStore
+	edpstore      core.ResourceStore
 	mu            *sync.Mutex
 	endpointCache map[string]*core.Endpoint //current node endpoints
 	svcCache      sync.Map                  //current node services
@@ -29,7 +29,7 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 	if err != nil {
 		return err
 	}
-	edpstore := edpStore.New(store)
+	edpstore := resStore.NewStore(store, new(core.Endpoint))
 	d := &daemon{
 		c:             cli,
 		store:         store,

@@ -1,18 +1,14 @@
 package core
 
 import (
-	"context"
 	"encoding/json"
 )
 
 //IngressListener 入口 Listener
 type IngressListener struct {
-	Version  string           `json:"version"`
-	Name     string           `json:"name"`
+	*ResourceMeta
 	Port     int              `json:"port"`
 	TLSCerts []TLSCertificate `json:"tlsCerts,omitempty"`
-	Created  int64            `json:"created"`
-	Updated  int64            `json:"updated"`
 }
 
 //TLSCertificate 证书
@@ -36,23 +32,39 @@ func (l *IngressListener) Parse(s string) error {
 
 //New ...
 func (l *IngressListener) New() Resource {
-	return new(IngressListener)
+	return &IngressListener{
+		ResourceMeta: new(ResourceMeta),
+	}
 }
 
-//ID ...
-func (l *IngressListener) ID() string {
+//ResourceGroup ...
+func (l *IngressListener) ResourceGroup() string {
+	return "ingresses"
+}
+
+//ResourceKind ...
+func (l *IngressListener) ResourceKind() string {
+	return "listener"
+}
+
+//ResourceKey ...
+func (l *IngressListener) ResourceKey() string {
+	return l.Name
+}
+
+//ResourcePrefixKey ...
+func (l *IngressListener) ResourcePrefixKey() string {
+	if l.ResourceMeta == nil {
+		return ""
+	}
 	return l.Name
 }
 
 //IngressRoute 入口路由
 type IngressRoute struct {
-	Version   string        `json:"version"`
-	Name      string        `json:"name"`
-	Namespace string        `json:"namespace"`
-	Listener  string        `json:"listener"`
-	Rules     []IngressRule `json:"rules"`
-	Created   int64         `json:"created"`
-	Updated   int64         `json:"updated"`
+	*ResourceMeta
+	Listener string        `json:"listener"`
+	Rules    []IngressRule `json:"rules"`
 }
 
 //String ...
@@ -68,12 +80,39 @@ func (route *IngressRoute) Parse(s string) error {
 
 //New ...
 func (route *IngressRoute) New() Resource {
-	return new(IngressRoute)
+	return &IngressRoute{
+		ResourceMeta: new(ResourceMeta),
+	}
 }
 
-//ID ...
-func (route *IngressRoute) ID() string {
-	return route.Namespace + "/" + route.Name
+//ResourceGroup ...
+func (route *IngressRoute) ResourceGroup() string {
+	return "ingresses"
+}
+
+//ResourceKind ...
+func (route *IngressRoute) ResourceKind() string {
+	return "route"
+}
+
+//ResourceKey ...
+func (route *IngressRoute) ResourceKey() string {
+	return "namespaces/" + route.Namespace + "/" + route.Name
+}
+
+//ResourcePrefixKey ...
+func (route *IngressRoute) ResourcePrefixKey() string {
+	if route.ResourceMeta == nil {
+		return "namespaces/"
+	}
+	if route.Namespace != "" {
+		if route.Listener != "" {
+			return "namespaces/" + route.Namespace + "/listeners/" + route.Listener + "/" + route.Name
+		}
+		return "namespaces/" + route.Namespace + "/listeners/"
+	}
+
+	return "namespaces/"
 }
 
 //IngressRule Ingress规则
@@ -105,32 +144,4 @@ type IngressPath struct {
 type IngressBackend struct {
 	ServiceName string `json:"serviceName"`
 	ServicePort int    `json:"servicePort"`
-}
-
-//IngressStore ingress listener store
-type IngressListenerStore interface {
-	List(ctx context.Context, arg *IngressListener, opts *ListOptions) ([]*IngressListener, error)
-	Get(ctx context.Context, arg *IngressListener, opts *GetOptions) (*IngressListener, error)
-	Put(ctx context.Context, arg *IngressListener, opts *PutOptions) (*IngressListener, error)
-	Delete(ctx context.Context, arg *IngressListener, opts *DeleteOptions) error
-}
-
-//IngressListenerLister ingress listener lister
-type IngressListenerLister interface {
-	List() (ret []*IngressListener)
-	Find(selector *IngressListener) (ret []*IngressListener)
-}
-
-//IngressRouteStore ingress route store
-type IngressRouteStore interface {
-	List(ctx context.Context, arg *IngressRoute, opts *ListOptions) ([]*IngressRoute, error)
-	Get(ctx context.Context, arg *IngressRoute, opts *GetOptions) (*IngressRoute, error)
-	Put(ctx context.Context, arg *IngressRoute, opts *PutOptions) (*IngressRoute, error)
-	Delete(ctx context.Context, arg *IngressRoute, opts *DeleteOptions) error
-}
-
-//IngressRouteLister ingress route lister
-type IngressRouteLister interface {
-	List() (ret []*IngressRoute)
-	Find(selector *IngressRoute) (ret []*IngressRoute)
 }

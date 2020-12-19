@@ -27,9 +27,11 @@ func (d *daemon) putNode() {
 		logrus.Error(err)
 	}
 	endpoint := &core.Endpoint{
-		Name:      d.node.Hostname,
-		Namespace: "system",
-		Service:   "node",
+		ResourceMeta: &core.ResourceMeta{
+			Name:      d.node.Hostname,
+			Namespace: "system",
+		},
+		Service: "node",
 		Status: &core.EndpointStatus{
 			ID:       d.node.Hostname,
 			Port:     d.node.Port,

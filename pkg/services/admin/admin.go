@@ -5,38 +5,53 @@ import (
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
-	"github.com/oars-sigs/oars-cloud/pkg/store/endpoints"
-	"github.com/oars-sigs/oars-cloud/pkg/store/ingresses"
-	"github.com/oars-sigs/oars-cloud/pkg/store/namespaces"
-	"github.com/oars-sigs/oars-cloud/pkg/store/services"
+	"github.com/oars-sigs/oars-cloud/pkg/store/resources"
 )
 
 type service struct {
 	store                core.KVStore
-	edpStore             core.EndpointStore
-	nsStore              core.NamespaceStore
-	svcStore             core.ServiceStore
-	ingressRouteStore    core.IngressRouteStore
-	ingressListenerStore core.IngressListenerStore
+	edpStore             core.ResourceStore
+	nsStore              core.ResourceStore
+	svcStore             core.ResourceStore
+	ingressRouteStore    core.ResourceStore
+	ingressListenerStore core.ResourceStore
 }
 
 //New admin api
 func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
 	s := &service{
 		store:                store,
-		edpStore:             endpoints.New(store),
-		nsStore:              namespaces.New(store),
-		svcStore:             services.New(store),
-		ingressRouteStore:    ingresses.NewRoute(store),
-		ingressListenerStore: ingresses.NewListener(store),
+		edpStore:             resources.NewStore(store, new(core.Endpoint)),
+		nsStore:              resources.NewStore(store, new(core.Namespace)),
+		svcStore:             resources.NewStore(store, new(core.Service)),
+		ingressRouteStore:    resources.NewStore(store, new(core.IngressRoute)),
+		ingressListenerStore: resources.NewStore(store, new(core.IngressListener)),
 	}
-	s.PutNamespace(core.Namespace{Name: "system"})
-	s.PutService(core.Service{Namespace: "system", Name: "admin", Kind: "runtime"})
-	s.PutService(core.Service{Namespace: "system", Name: "node", Kind: "runtime"})
+	s.PutNamespace(core.Namespace{
+		ResourceMeta: &core.ResourceMeta{
+			Name: "system",
+		},
+	})
+	s.PutService(core.Service{
+		ResourceMeta: &core.ResourceMeta{
+			Name:      "admin",
+			Namespace: "system",
+		},
+		Kind: "runtime",
+	})
+	s.PutService(core.Service{
+		ResourceMeta: &core.ResourceMeta{
+			Name:      "node",
+			Namespace: "system",
+		},
+		Kind: "runtime",
+	})
 	s.edpStore.Put(context.Background(), &core.Endpoint{
-		Name:      cfg.Server.Name,
-		Namespace: "system",
-		Service:   "admin",
+		ResourceMeta: &core.ResourceMeta{
+			Name:      cfg.Server.Name,
+			Namespace: "system",
+		},
+		Service: "admin",
 		Status: &core.EndpointStatus{
 			ID:    cfg.Server.Name,
 			IP:    cfg.Server.Host,
@@ -52,8 +67,6 @@ func (s *service) Call(ctx context.Context, resource, action string, args interf
 	case "namespace":
 		r = s.regNamespace(ctx, action, args)
 	case "service":
-		r = s.regService(ctx, action, args)
-	case "method":
 		r = s.regService(ctx, action, args)
 	case "endpoint":
 		r = s.regEndpoint(ctx, action, args)

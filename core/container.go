@@ -51,14 +51,6 @@ func (svc *ContainerService) Parse(s string) error {
 	return json.Unmarshal([]byte(s), svc)
 }
 
-func (svc *ContainerService) ID() string {
-	return svc.Name
-}
-
-func (svc *ContainerService) New() Resource {
-	return new(ContainerService)
-}
-
 //ContainerPort 容器端口
 type ContainerPort struct {
 	Proxy         bool   `json:"proxy,omitempty"`

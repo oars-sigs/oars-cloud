@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/oars-sigs/oars-cloud/core"
+	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -39,13 +40,15 @@ import (
 )
 
 type ingressController struct {
-	store         core.KVStore
-	cfg           *core.Config
-	snapshot      cachev3.SnapshotCache
-	trigger       chan struct{}
-	icache        sync.Map
-	listenerCache sync.Map
-	version       int64
+	store          core.KVStore
+	cfg            *core.Config
+	snapshot       cachev3.SnapshotCache
+	trigger        chan struct{}
+	icache         sync.Map
+	listenerCache  sync.Map
+	listenerLister core.ResourceLister
+	routeLister    core.ResourceLister
+	version        int64
 }
 
 func newIngress(store core.KVStore, cfg *core.Config) *ingressController {
@@ -55,121 +58,26 @@ func newIngress(store core.KVStore, cfg *core.Config) *ingressController {
 }
 
 func (c *ingressController) run(stopCh <-chan struct{}) error {
-	ctx := context.Background()
-	cb := &testv3.Callbacks{Debug: false}
-	srv := serverv3.NewServer(ctx, c.snapshot, cb)
-	lrev, irev, err := c.initCache()
+	handle := &core.ResourceEventHandle{
+		Trigger: c.trigger,
+	}
+	listenerLister, err := resStore.NewLister(c.store, new(core.IngressListener), handle)
 	if err != nil {
 		return err
 	}
+	c.listenerLister = listenerLister
+	routeLister, err := resStore.NewLister(c.store, new(core.IngressRoute), handle)
+	if err != nil {
+		return err
+	}
+	c.routeLister = routeLister
+	ctx := context.Background()
+	cb := &testv3.Callbacks{Debug: false}
+	srv := serverv3.NewServer(ctx, c.snapshot, cb)
 	go c.update(stopCh)
 	c.scheduler()
-	go c.watchIngressListener(lrev, stopCh)
-	go c.watchIngress(irev, stopCh)
 	runServer(ctx, srv, c.cfg.Ingress.XDSPort)
 	return nil
-}
-func (c *ingressController) initCache() (lrev int64, irev int64, err error) {
-	var kvs []core.KV
-	kvs, lrev, err = c.store.GetWithRev(context.Background(), "ingresses/listener/", core.KVOption{WithPrefix: true})
-	if err != nil {
-		return
-	}
-	for _, kv := range kvs {
-		r := new(core.IngressListener)
-		err = r.Parse(kv.Value)
-		if err != nil {
-			return
-		}
-		c.listenerCache.Store(r.Name, r)
-	}
-	kvs, irev, err = c.store.GetWithRev(context.Background(), "ingresses/route/", core.KVOption{WithPrefix: true})
-	if err != nil {
-		return
-	}
-	for _, kv := range kvs {
-		r := new(core.IngressRoute)
-		err = r.Parse(kv.Value)
-		if err != nil {
-			return
-		}
-		c.icache.Store(r.Name, r)
-	}
-
-	return
-
-}
-
-func (c *ingressController) watchIngressListener(rev int64, stopCh <-chan struct{}) error {
-	updateCh := make(chan core.WatchChan)
-	errCh := make(chan error)
-	ctx, cancel := context.WithCancel(context.Background())
-	//TODO: 封装成存储库
-	go c.store.Watch(ctx, "ingresses/listener/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true, DisableFirst: true, WithRev: rev})
-	for {
-		select {
-		case res := <-updateCh:
-			kv := res.KV
-			if !res.Put {
-				kv = res.PrevKV
-			}
-			lis := new(core.IngressListener)
-			err := lis.Parse(kv.Value)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			if res.Put {
-				c.listenerCache.Store(lis.Name, lis)
-				c.scheduler()
-				continue
-			}
-			c.listenerCache.Delete(lis.Name)
-			c.scheduler()
-
-		case err := <-errCh:
-			fmt.Println(err)
-		case <-stopCh:
-			cancel()
-			return nil
-		}
-	}
-}
-
-func (c *ingressController) watchIngress(rev int64, stopCh <-chan struct{}) error {
-	updateCh := make(chan core.WatchChan)
-	errCh := make(chan error)
-	ctx, cancel := context.WithCancel(context.Background())
-	//TODO: 封装成存储库
-	go c.store.Watch(ctx, "ingresses/route/", updateCh, errCh, core.KVOption{WithPrevKV: true, WithPrefix: true, DisableFirst: true, WithRev: rev})
-	for {
-		select {
-		case res := <-updateCh:
-			kv := res.KV
-			if !res.Put {
-				kv = res.PrevKV
-			}
-			ingress := new(core.IngressRoute)
-			err := ingress.Parse(kv.Value)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			if res.Put {
-				c.icache.Store(ingress.Name, ingress)
-				c.scheduler()
-				continue
-			}
-			c.icache.Delete(ingress.Name)
-			c.scheduler()
-
-		case err := <-errCh:
-			fmt.Println(err)
-		case <-stopCh:
-			cancel()
-			return nil
-		}
-	}
 }
 
 func (c *ingressController) scheduler() {
@@ -197,7 +105,9 @@ type ingressRule struct {
 
 func (c *ingressController) updateHandle() {
 	rules := make(map[string]map[string][]ingressRule)
-	c.icache.Range(func(k, v interface{}) bool {
+	routeList, _ := c.routeLister.List()
+	listenerList, _ := c.listenerLister.List()
+	for _, v := range routeList {
 		ingress := v.(*core.IngressRoute)
 		if _, ok := rules[ingress.Listener]; !ok {
 			rules[ingress.Listener] = make(map[string][]ingressRule)
@@ -212,15 +122,14 @@ func (c *ingressController) updateHandle() {
 			}
 			rules[ingress.Listener][rule.Host] = append(rules[ingress.Listener][rule.Host], ir)
 		}
-		return true
-	})
+	}
 	listeners := make([]types.Resource, 0)
 	routers := make([]types.Resource, 0)
 	clustersMap := make(map[string]*cluster.Cluster)
-	c.listenerCache.Range(func(k, v interface{}) bool {
+	for _, v := range listenerList {
 		lis := v.(*core.IngressListener)
 		if _, ok := rules[lis.Name]; !ok {
-			return true
+			continue
 		}
 		filterChains, newRouters := c.makeTCPChains(lis, rules[lis.Name], clustersMap)
 		if len(filterChains) == 0 {
@@ -243,8 +152,7 @@ func (c *ingressController) updateHandle() {
 			FilterChains: filterChains,
 		}
 		listeners = append(listeners, liser)
-		return true
-	})
+	}
 	c.version = time.Now().UnixNano()
 	clusters := make([]types.Resource, 0)
 	for k := range clustersMap {

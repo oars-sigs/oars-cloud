@@ -2,12 +2,12 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
-	edpStore "github.com/oars-sigs/oars-cloud/pkg/store/endpoints"
-	svcStore "github.com/oars-sigs/oars-cloud/pkg/store/services"
+	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,7 +37,7 @@ func (d *daemon) run() {
 }
 
 func (d *daemon) cacheEndpoint() error {
-	edpLister, err := edpStore.NewLister(d.store, &core.Endpoint{}, &core.ResourceEventHandle{})
+	edpLister, err := resStore.NewLister(d.store, &core.Endpoint{}, &core.ResourceEventHandle{})
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (d *daemon) cacheService() error {
 	handle := &core.ResourceEventHandle{
 		Interceptor: interceptor,
 	}
-	svcLister, err := svcStore.NewLister(d.store, &core.Service{}, handle)
+	svcLister, err := resStore.NewLister(d.store, &core.Service{}, handle)
 	if err != nil {
 		return err
 	}
@@ -91,6 +91,7 @@ func (d *daemon) cacheService() error {
 }
 
 func (d *daemon) parseContainerSvc(svc *core.Service) []*core.ContainerService {
+	fmt.Println(svc)
 	cSvcs := make([]*core.ContainerService, 0)
 	if svc.Kind != "docker" {
 		return cSvcs

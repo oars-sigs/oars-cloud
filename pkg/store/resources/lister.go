@@ -1,4 +1,4 @@
-package cache
+package resources
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 
 type client struct {
 	store    core.KVStore
-	prefix   string
 	data     map[string]core.Resource
 	resource core.Resource
 	mu       *sync.Mutex
@@ -19,10 +18,10 @@ type client struct {
 	handle   *core.ResourceEventHandle
 }
 
-func New(store core.KVStore, prefix string, resource core.Resource, handle *core.ResourceEventHandle) (core.ResourceLister, error) {
+//NewLister resource lister
+func NewLister(store core.KVStore, resource core.Resource, handle *core.ResourceEventHandle) (core.ResourceLister, error) {
 	c := &client{
 		store:    store,
-		prefix:   prefix,
 		resource: resource,
 		handle:   handle,
 		mu:       new(sync.Mutex),
@@ -61,7 +60,7 @@ func (c *client) List() ([]core.Resource, bool) {
 }
 
 func (c *client) fetch() (int64, error) {
-	kvs, rev, err := c.store.GetWithRev(context.Background(), c.prefix, core.KVOption{WithPrefix: true})
+	kvs, rev, err := c.store.GetWithRev(context.Background(), getPrefixKey(c.resource), core.KVOption{WithPrefix: true})
 	if err != nil {
 		return rev, err
 	}
@@ -74,7 +73,7 @@ func (c *client) fetch() (int64, error) {
 		if !ok {
 			continue
 		}
-		ress[resource.ID()] = resource
+		ress[resource.ResourceKey()] = resource
 	}
 	for _, oldRes := range c.data {
 		if c.handle.Interceptor != nil {
@@ -147,7 +146,7 @@ func (c *client) watch(rev int64, stopCh chan struct{}) error {
 	errCh := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	opt := core.KVOption{WithPrevKV: true, WithPrefix: true, DisableFirst: true, WithRev: rev}
-	go c.store.Watch(ctx, c.prefix, updateCh, errCh, opt)
+	go c.store.Watch(ctx, getPrefixKey(c.resource), updateCh, errCh, opt)
 	for {
 		select {
 		case res := <-updateCh:
@@ -160,10 +159,10 @@ func (c *client) watch(rev int64, stopCh chan struct{}) error {
 			}
 			c.mu.Lock()
 			if res.Put {
-				c.data[resource.ID()] = resource
+				c.data[resource.ResourceKey()] = resource
 
 			} else {
-				delete(c.data, resource.ID())
+				delete(c.data, resource.ResourceKey())
 			}
 			c.mu.Unlock()
 			c.scheduler()

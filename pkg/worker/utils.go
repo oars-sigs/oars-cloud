@@ -52,9 +52,11 @@ func (d *daemon) methodName(m *core.Method) string {
 func (d *daemon) getEndpointByContainerName(s string) *core.Endpoint {
 	ns := strings.Split(s, "_")
 	return &core.Endpoint{
-		Namespace: ns[1],
-		Service:   ns[2],
-		Name:      ns[3],
+		ResourceMeta: &core.ResourceMeta{
+			Namespace: ns[1],
+			Name:      ns[3],
+		},
+		Service: ns[2],
 	}
 }
 

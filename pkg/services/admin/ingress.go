@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/certificate"
@@ -28,17 +27,10 @@ func (s *service) GetIngressListener(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	key := fmt.Sprintf("ingresses/listener/%s", listener.Name)
 	ctx := context.TODO()
-	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
+	listeners, err := s.ingressListenerStore.List(ctx, &listener, &core.ListOptions{})
 	if err != nil {
 		return e.InternalError(err)
-	}
-	listeners := make([]core.IngressListener, 0)
-	for _, kv := range kvs {
-		lis := new(core.IngressListener)
-		lis.Parse(kv.Value)
-		listeners = append(listeners, *lis)
 	}
 	return core.NewAPIReply(listeners)
 }
@@ -73,13 +65,8 @@ func (s *service) PutIngressListener(args interface{}) *core.APIReply {
 			},
 		}
 	}
-
-	v := core.KV{
-		Key:   fmt.Sprintf("ingresses/listener/%s", listener.Name),
-		Value: listener.String(),
-	}
 	ctx := context.TODO()
-	err = s.store.Put(ctx, v)
+	_, err = s.ingressListenerStore.Put(ctx, &listener, &core.PutOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -93,12 +80,7 @@ func (s *service) DeleteIngressListener(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	ctx := context.TODO()
-	err = s.store.Delete(ctx, "ingresses/route/listener/"+listener.Name+"/", core.KVOption{WithPrefix: true})
-	if err != nil {
-		return e.InternalError(err)
-	}
-
-	err = s.store.Delete(ctx, "ingresses/listener/"+listener.Name, core.KVOption{WithPrefix: true})
+	err = s.ingressListenerStore.Delete(ctx, &listener, &core.DeleteOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -118,53 +100,41 @@ func (s *service) regIngressRoute(ctx context.Context, action string, args inter
 }
 
 func (s *service) GetIngressRoute(args interface{}) *core.APIReply {
-	var ingress core.IngressRoute
-	err := unmarshalArgs(args, &ingress)
+	var route core.IngressRoute
+	err := unmarshalArgs(args, &route)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	key := fmt.Sprintf("ingresses/route/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
 	ctx := context.TODO()
-	kvs, err := s.store.Get(ctx, key, core.KVOption{WithPrefix: true})
+	routes, err := s.ingressRouteStore.List(ctx, &route, &core.ListOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
-	ingresses := make([]core.IngressRoute, 0)
-	for _, kv := range kvs {
-		ing := new(core.IngressRoute)
-		ing.Parse(kv.Value)
-		ingresses = append(ingresses, *ing)
-	}
-	return core.NewAPIReply(ingresses)
+	return core.NewAPIReply(routes)
 }
 
 func (s *service) PutIngressRoute(args interface{}) *core.APIReply {
-	var ingress core.IngressRoute
-	err := unmarshalArgs(args, &ingress)
+	var route core.IngressRoute
+	err := unmarshalArgs(args, &route)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	v := core.KV{
-		Key:   fmt.Sprintf("ingresses/route/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name),
-		Value: ingress.String(),
-	}
 	ctx := context.TODO()
-	err = s.store.Put(ctx, v)
+	_, err = s.ingressRouteStore.Put(ctx, &route, &core.PutOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}
-	return core.NewAPIReply(ingress)
+	return core.NewAPIReply(route)
 }
 
 func (s *service) DeleteIngressRoute(args interface{}) *core.APIReply {
-	var ingress core.IngressRoute
-	err := unmarshalArgs(args, &ingress)
+	var route core.IngressRoute
+	err := unmarshalArgs(args, &route)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
 	ctx := context.TODO()
-	key := fmt.Sprintf("ingresses/route/listener/%s/namespaces/%s/%s", ingress.Namespace, ingress.Listener, ingress.Name)
-	err = s.store.Delete(ctx, key, core.KVOption{WithPrefix: true})
+	err = s.ingressRouteStore.Delete(ctx, &route, &core.DeleteOptions{})
 	if err != nil {
 		return e.InternalError(err)
 	}

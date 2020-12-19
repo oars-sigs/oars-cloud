@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
-	edpStore "github.com/oars-sigs/oars-cloud/pkg/store/endpoints"
+	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 	log "github.com/sirupsen/logrus"
 )
 
 type nodeController struct {
 	kv     core.KVStore
-	store  core.EndpointStore
+	store  core.ResourceStore
 	lister core.ResourceLister
 }
 
@@ -20,8 +20,8 @@ func newNodec(kv core.KVStore) *nodeController {
 }
 
 func (c *nodeController) runNodec(stopCh chan struct{}) error {
-	c.store = edpStore.New(c.kv)
-	lister, err := edpStore.NewLister(c.kv, &core.Endpoint{Namespace: "system", Service: "node"}, &core.ResourceEventHandle{})
+	c.store = resStore.NewStore(c.kv, new(core.Endpoint))
+	lister, err := resStore.NewLister(c.kv, &core.Endpoint{ResourceMeta: &core.ResourceMeta{Namespace: "system"}, Service: "node"}, &core.ResourceEventHandle{})
 	if err != nil {
 		return err
 	}

@@ -63,8 +63,10 @@ func (s *service) RestartEndPoint(args interface{}) *core.APIReply {
 
 func (s *service) getAddr(hostname string) (string, error) {
 	r := s.GetEndPoint(core.Endpoint{
-		Namespace: "system",
-		Service:   "node",
+		ResourceMeta: &core.ResourceMeta{
+			Namespace: "system",
+		},
+		Service: "node",
 	})
 	if r.Code != core.ServiceSuccessCode {
 		return "", errors.New(r.SubCode)

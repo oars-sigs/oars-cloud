@@ -2,7 +2,6 @@ package core
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"html/template"
@@ -10,16 +9,10 @@ import (
 
 //Service 服务
 type Service struct {
-	Version         string            `json:"version"`
-	Namespace       string            `json:"namespace"`
-	Name            string            `json:"name"`
-	Kind            string            `json:"kind"`
-	Endpoints       []ServiceEndpoint `json:"endpoints"`
-	CurrentEndpoint *ServiceEndpoint  `json:"-"` //use to runtime
-	Docker          ContainerService  `json:"docker,omitempty"`
-	RuntimeID       string            `json:"-"`
-	Created         int64             `json:"created,omitempty"`
-	Updated         int64             `json:"updated,omitempty"`
+	*ResourceMeta
+	Kind      string            `json:"kind"`
+	Endpoints []ServiceEndpoint `json:"endpoints"`
+	Docker    ContainerService  `json:"docker,omitempty"`
 }
 
 //ServiceEndpoint 服务端点
@@ -50,12 +43,35 @@ func (svc *Service) Parse(s string) error {
 
 //New ...
 func (svc *Service) New() Resource {
-	return new(Service)
+	return &Service{
+		ResourceMeta: new(ResourceMeta),
+	}
 }
 
-//ID ...
-func (svc *Service) ID() string {
-	return svc.Namespace + "/" + svc.Name
+//ResourceGroup ...
+func (svc *Service) ResourceGroup() string {
+	return "services"
+}
+
+//ResourceKind ...
+func (svc *Service) ResourceKind() string {
+	return "svc"
+}
+
+//ResourceKey ...
+func (svc *Service) ResourceKey() string {
+	return "namespaces/" + svc.Namespace + "/" + svc.Name
+}
+
+//ResourcePrefixKey ...
+func (svc *Service) ResourcePrefixKey() string {
+	if svc.ResourceMeta == nil {
+		return "namespaces/"
+	}
+	if svc.Namespace != "" {
+		return "namespaces/" + svc.Namespace + "/" + svc.Name
+	}
+	return "namespaces/"
 }
 
 //ParseContainer ...
@@ -79,12 +95,4 @@ func (svc *Service) ParseContainer(vars ServiceValues) (*ContainerService, error
 		return csvc, nil
 	}
 	return nil, errors.New("not support kind")
-}
-
-//ServiceStore endpiont store
-type ServiceStore interface {
-	List(ctx context.Context, arg *Service, opts *ListOptions) ([]*Service, error)
-	Get(ctx context.Context, arg *Service, opts *GetOptions) (*Service, error)
-	Put(ctx context.Context, arg *Service, opts *PutOptions) (*Service, error)
-	Delete(ctx context.Context, arg *Service, opts *DeleteOptions) error
 }
