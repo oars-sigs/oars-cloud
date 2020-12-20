@@ -208,7 +208,7 @@ func (d *daemon) Start(ctx context.Context, id string) error {
 }
 
 func (d *daemon) Stop(ctx context.Context, id string) error {
-	timeout := 30 * time.Second
+	timeout := 10 * time.Second
 	return d.c.ContainerStop(ctx, id, &timeout)
 }
 

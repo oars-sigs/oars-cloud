@@ -4,6 +4,7 @@ import "encoding/json"
 
 //ContainerService 容器服务
 type ContainerService struct {
+	ID              string                 `json:"-"`
 	Name            string                 `json:"-"`
 	Labels          map[string]string      `json:"labels"`
 	Image           string                 `json:"image,omitempty"`

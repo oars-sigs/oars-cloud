@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
@@ -240,7 +241,7 @@ func (d *daemon) syncDockerSvc() error {
 	for _, edp := range d.endpointCache {
 		edpExist := false
 		for _, svc := range svcs {
-			if svc.Name == d.containerNameByEdp(edp) && svc.Labels[core.HashLabelKey] == edp.Labels[core.HashLabelKey] {
+			if svc.Name == d.containerNameByEdp(edp) {
 				edpExist = true
 				break
 			}
@@ -254,9 +255,13 @@ func (d *daemon) syncDockerSvc() error {
 	for _, svc := range svcs {
 		edpExist := false
 		for _, edp := range d.endpointCache {
-			if svc.Name == d.containerNameByEdp(edp) && svc.Labels[core.HashLabelKey] == edp.Labels[core.HashLabelKey] {
+			if svc.Name == d.containerNameByEdp(edp) {
+				if svc.Labels[core.HashLabelKey] != edp.Labels[core.HashLabelKey] {
+					svc.ID = edp.Status.ID
+					break
+				}
 				edpExist = true
-				continue
+				break
 			}
 		}
 		if !edpExist {
@@ -264,25 +269,30 @@ func (d *daemon) syncDockerSvc() error {
 		}
 	}
 	d.mu.Unlock()
-	ignoreCreates := make([]*core.Endpoint, 0)
 	ctx := context.Background()
-	//TODO 并发？
+
 	//删除容器
+	delGw := new(sync.WaitGroup)
+	delGw.Add(len(delList))
 	for _, endpoint := range delList {
-		err := d.Remove(ctx, endpoint.Status.ID)
-		if err != nil {
-			if d.dockerError(err) != errNotFound {
-				logrus.Error(err)
-				ignoreCreates = append(ignoreCreates, endpoint)
-				continue
+		go func(id string) {
+			err := d.Remove(ctx, id)
+			if err != nil {
+				if d.dockerError(err) != errNotFound {
+					logrus.Error(err)
+				}
 			}
-		}
+			delGw.Done()
+		}(endpoint.Status.ID)
 	}
 
+	//TODO 并发？
 	//创建容器
 	for _, svc := range addList {
-		for _, oldendpoint := range ignoreCreates {
-			if svc.Name == d.containerNameByEdp(oldendpoint) {
+		if svc.ID != "" {
+			err := d.Remove(ctx, svc.ID)
+			if err != nil {
+				logrus.Error(err)
 				continue
 			}
 		}
@@ -298,5 +308,6 @@ func (d *daemon) syncDockerSvc() error {
 		d.endpointCache[d.containerNameByEdp(edp)] = edp
 		d.mu.Unlock()
 	}
+	delGw.Wait()
 	return nil
 }
