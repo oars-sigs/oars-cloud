@@ -128,7 +128,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) error {
 		},
 		NetworkMode: container.NetworkMode(netMode),
 		Mounts:      mounts,
-		DNS:         []string{"127.0.0.1"},
+		DNS:         []string{d.node.IP},
 		Resources: container.Resources{
 			Memory:   svc.Resources.Memory * 1024,
 			CPUQuota: int64(svc.Resources.CPU * float64(100000)),
