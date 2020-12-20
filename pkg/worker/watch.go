@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -42,6 +41,25 @@ func (d *daemon) cacheEndpoint() error {
 		return err
 	}
 	d.edpLister = edpLister
+	interceptor := func(put bool, r, prer core.Resource) (core.Resource, bool, error) {
+		res := false
+		if r != nil {
+			if r.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname {
+				res = true
+			}
+		}
+		if prer != nil {
+			if prer.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname {
+				res = true
+			}
+		}
+		return nil, res, nil
+	}
+	nodeEdpLister, err := resStore.NewLister(d.store, &core.Endpoint{}, &core.ResourceEventHandle{Interceptor: interceptor})
+	if err != nil {
+		return err
+	}
+	d.nodeEdpLister = nodeEdpLister
 	return nil
 }
 
@@ -91,7 +109,6 @@ func (d *daemon) cacheService() error {
 }
 
 func (d *daemon) parseContainerSvc(svc *core.Service) []*core.ContainerService {
-	fmt.Println(svc)
 	cSvcs := make([]*core.ContainerService, 0)
 	if svc.Kind != "docker" {
 		return cSvcs
@@ -132,39 +149,82 @@ func (d *daemon) cacheContainers() {
 	for {
 		select {
 		case <-t.C:
+			//list docker containers and find container who status has updated
 			cs, err := d.List(context.Background())
 			if err != nil {
 				logrus.Error(err)
 				continue
 			}
-			edps := make(map[string]*core.Endpoint, 0)
+			edps := make(map[string]*core.Endpoint)
+			putEps := make([]*core.Endpoint, 0)
 			for _, cn := range cs {
 				if _, ok := cn.Labels[core.CreatorLabelKey]; !ok {
 					continue
 				}
 				edp := d.cantainerToEndpoint(cn)
 				edps[edp.Status.ID] = edp
-				ctx := context.Background()
-				//TODO 优化更新
 				if oldedp, ok := d.endpointCache[edp.Status.ID]; ok {
 					if oldedp.Status.IP != edp.Status.IP || oldedp.Status.StateDetail != edp.Status.StateDetail {
-						_, err = d.edpstore.Put(ctx, edp, &core.PutOptions{})
-						if err != nil {
-							logrus.Error(err)
-						}
+						putEps = append(putEps, edp)
 					}
 					continue
 				}
-				_, err = d.edpstore.Put(ctx, edp, &core.PutOptions{})
-				if err != nil {
-					logrus.Error(err)
-				}
-
+				putEps = append(putEps, edp)
 			}
 			d.mu.Lock()
 			d.endpointCache = edps
 			d.mu.Unlock()
 			d.ready = true
+			//find new add endpoints and create these
+			d.svcCache.Range(func(k, v interface{}) bool {
+				svc := v.(*core.ContainerService)
+				edpExist := false
+				for _, edp := range edps {
+					if svc.Name == d.containerNameByEdp(edp) {
+						edpExist = true
+						break
+					}
+				}
+				if !edpExist {
+					putEps = append(putEps, d.cserviceToEndpoint(svc))
+				}
+				return true
+			})
+			//update endpoints status
+			for _, edp := range putEps {
+				_, err = d.edpstore.Put(context.Background(), edp, &core.PutOptions{})
+				if err != nil {
+					logrus.Error(err)
+				}
+			}
+			//gc endpoints that service had deleted
+			resources, _ := d.nodeEdpLister.List()
+			for _, resource := range resources {
+				endpoint := resource.(*core.Endpoint)
+				edpExist := false
+				d.svcCache.Range(func(k, v interface{}) bool {
+					svc := v.(*core.ContainerService)
+					if svc.Name == d.containerNameByEdp(endpoint) {
+						edpExist = true
+						return false
+					}
+					return true
+				})
+				if !edpExist {
+					for _, edp := range putEps {
+						if endpoint.Name == edp.Name {
+							edpExist = true
+							break
+						}
+					}
+				}
+				if !edpExist {
+					err = d.edpstore.Delete(context.Background(), endpoint, &core.DeleteOptions{})
+					if err != nil {
+						logrus.Error(err)
+					}
+				}
+			}
 		}
 	}
 }
@@ -216,10 +276,6 @@ func (d *daemon) syncDockerSvc() error {
 				ignoreCreates = append(ignoreCreates, endpoint)
 				continue
 			}
-		}
-		err = d.edpstore.Delete(ctx, endpoint, &core.DeleteOptions{})
-		if err != nil {
-			logrus.Error(err)
 		}
 	}
 

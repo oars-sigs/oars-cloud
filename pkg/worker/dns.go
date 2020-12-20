@@ -12,11 +12,6 @@ import (
 )
 
 func (d *daemon) dnsServer() {
-	err := d.cacheEndpoint()
-	if err != nil {
-		logrus.Error(err)
-		os.Exit(-1)
-	}
 	handler := dns.NewServeMux()
 	handler.HandleFunc(".", d.dnsHandle)
 	server := &dns.Server{
@@ -28,7 +23,7 @@ func (d *daemon) dnsServer() {
 		WriteTimeout: 30 * time.Second,
 	}
 	logrus.Infof("Startlistener on %s", ":53")
-	err = server.ListenAndServe()
+	err := server.ListenAndServe()
 	if err != nil {
 		logrus.Error(err)
 		os.Exit(-1)
@@ -42,6 +37,7 @@ func (d *daemon) dnsHandle(w dns.ResponseWriter, req *dns.Msg) {
 	dom = strings.TrimSuffix(dom, ".")
 	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		addrs := make([]string, 0)
+		//TODO 添加缓存
 		resources, _ := d.edpLister.List()
 		for _, resource := range resources {
 			endpoint := resource.(*core.Endpoint)

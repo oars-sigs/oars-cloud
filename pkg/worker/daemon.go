@@ -15,6 +15,7 @@ type daemon struct {
 	store         core.KVStore
 	svcLister     core.ResourceLister
 	edpLister     core.ResourceLister
+	nodeEdpLister core.ResourceLister
 	edpstore      core.ResourceStore
 	mu            *sync.Mutex
 	endpointCache map[string]*core.Endpoint //current node endpoints
@@ -37,6 +38,10 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 		mu:            new(sync.Mutex),
 		endpointCache: make(map[string]*core.Endpoint),
 		edpstore:      edpstore,
+	}
+	err = d.cacheEndpoint()
+	if err != nil {
+		return err
 	}
 	go d.initNode()
 	go d.run()
