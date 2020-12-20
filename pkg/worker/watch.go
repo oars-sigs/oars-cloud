@@ -49,7 +49,7 @@ func (d *daemon) cacheEndpoint() error {
 			}
 		}
 		if prer != nil {
-			if prer.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname && r.(*core.Endpoint).Kind == "container" {
+			if prer.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname && prer.(*core.Endpoint).Kind == "container" {
 				res = true
 			}
 		}
@@ -211,7 +211,7 @@ func (d *daemon) cacheContainers() {
 					return true
 				})
 				if !edpExist {
-					for _, edp := range putEps {
+					for _, edp := range edps {
 						if endpoint.Name == edp.Name {
 							edpExist = true
 							break
