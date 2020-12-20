@@ -44,12 +44,12 @@ func (d *daemon) cacheEndpoint() error {
 	interceptor := func(put bool, r, prer core.Resource) (core.Resource, bool, error) {
 		res := false
 		if r != nil {
-			if r.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname {
+			if r.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname && r.(*core.Endpoint).Kind == "container" {
 				res = true
 			}
 		}
 		if prer != nil {
-			if prer.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname {
+			if prer.(*core.Endpoint).Status.Node.Hostname == d.node.Hostname && r.(*core.Endpoint).Kind == "container" {
 				res = true
 			}
 		}

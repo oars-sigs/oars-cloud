@@ -31,6 +31,7 @@ func (d *daemon) putNode() {
 			Name:      d.node.Hostname,
 			Namespace: "system",
 		},
+		Kind:    "runtime",
 		Service: "node",
 		Status: &core.EndpointStatus{
 			ID:       d.node.Hostname,

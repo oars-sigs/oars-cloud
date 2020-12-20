@@ -57,6 +57,7 @@ func (d *daemon) getEndpointByContainerName(s string) *core.Endpoint {
 			Name:      ns[3],
 		},
 		Service: ns[2],
+		Kind:    "container",
 	}
 }
 

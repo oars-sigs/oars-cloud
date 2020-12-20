@@ -52,6 +52,7 @@ func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
 			Namespace: "system",
 		},
 		Service: "admin",
+		Kind:    "runtime",
 		Status: &core.EndpointStatus{
 			ID:    cfg.Server.Name,
 			IP:    cfg.Server.Host,
