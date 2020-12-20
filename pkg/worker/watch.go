@@ -212,7 +212,7 @@ func (d *daemon) cacheContainers() {
 				})
 				if !edpExist {
 					for _, edp := range edps {
-						if endpoint.Name == edp.Name {
+						if d.containerNameByEdp(endpoint) == d.containerNameByEdp(edp) {
 							edpExist = true
 							break
 						}
