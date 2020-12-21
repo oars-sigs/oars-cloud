@@ -75,11 +75,13 @@ func (c *client) fetch() (int64, error) {
 		}
 		ress[resource.ResourceKey()] = resource
 	}
-	for _, oldRes := range c.data {
-		if c.handle.Interceptor != nil {
-			_, _, err := c.handle.Interceptor(false, nil, oldRes)
-			if err != nil {
-				return 0, err
+	if c.handle.Interceptor != nil {
+		for okey, oldRes := range c.data {
+			if _, ok := ress[okey]; !ok {
+				_, _, err := c.handle.Interceptor(false, nil, oldRes)
+				if err != nil {
+					return 0, err
+				}
 			}
 		}
 	}
