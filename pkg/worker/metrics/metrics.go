@@ -125,32 +125,32 @@ func Return() map[string]*prometheus.Desc {
 	containerMetrics["nodeMemoryUsagePercent"] = prometheus.NewDesc(
 		prometheus.BuildFQName("node", "memory", "usage_percent"),
 		"memory usage percent for the specified node",
-		labels, nil,
+		labelsNode, nil,
 	)
 	containerMetrics["nodeCpuCoreNum"] = prometheus.NewDesc(
 		prometheus.BuildFQName("node", "cpu", "core_num"),
 		"CPU core number for the specified node",
-		labels, nil,
+		labelsNode, nil,
 	)
 	containerMetrics["nodeCpuUsagePercent"] = prometheus.NewDesc(
 		prometheus.BuildFQName("node", "cpu", "usage_percent"),
 		"CPU usage percent for the specified node",
-		labels, nil,
+		labelsNode, nil,
 	)
 	containerMetrics["nodeCpuLoad1"] = prometheus.NewDesc(
 		prometheus.BuildFQName("node", "cpu", "load1"),
 		"CPU load1 for the specified node",
-		labels, nil,
+		labelsNode, nil,
 	)
 	containerMetrics["nodeCpuLoad5"] = prometheus.NewDesc(
 		prometheus.BuildFQName("node", "cpu", "load5"),
 		"CPU load5 for the specified node",
-		labels, nil,
+		labelsNode, nil,
 	)
 	containerMetrics["nodeCpuLoad15"] = prometheus.NewDesc(
 		prometheus.BuildFQName("node", "cpu", "load15"),
 		"CPU load15 for the specified node",
-		labels, nil,
+		labelsNode, nil,
 	)
 	return containerMetrics
 }
