@@ -144,7 +144,7 @@ func toIPVSService(vs *Service) (*libipvs.Service, error) {
 
 func toIPVSDestination(rs *Destination) (*libipvs.Destination, error) {
 	return &libipvs.Destination{
-		Address: net.ParseIP(vs.Address),
+		Address: net.ParseIP(rs.Address),
 		Port:    rs.Port,
 		Weight:  rs.Weight,
 	}, nil
