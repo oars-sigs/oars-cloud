@@ -43,9 +43,17 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 	if err != nil {
 		return err
 	}
+	err = d.cacheService()
+	if err != nil {
+		return err
+	}
 	go d.initNode()
 	go d.run()
 	go d.dnsServer()
+	err = startLVS(d.svcLister, d.edpLister)
+	if err != nil {
+		return err
+	}
 	go metrics.Start(cli, node)
 	err = d.reg()
 	return err

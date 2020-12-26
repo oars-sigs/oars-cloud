@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"os"
 	"sync"
 	"time"
 
@@ -12,11 +11,6 @@ import (
 )
 
 func (d *daemon) run() {
-	err := d.cacheService()
-	if err != nil {
-		logrus.Error(err)
-		os.Exit(-1)
-	}
 	go d.cacheContainers()
 	t := time.NewTicker(time.Second * 5)
 	for {

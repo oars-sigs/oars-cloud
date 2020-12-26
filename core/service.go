@@ -10,9 +10,10 @@ import (
 //Service 服务
 type Service struct {
 	*ResourceMeta
-	Kind      string            `json:"kind"`
-	Endpoints []ServiceEndpoint `json:"endpoints"`
-	Docker    ContainerService  `json:"docker,omitempty"`
+	Kind          string            `json:"kind"`
+	Endpoints     []ServiceEndpoint `json:"endpoints"`
+	Docker        ContainerService  `json:"docker,omitempty"`
+	VirtualServer *VirtualServer    `json:"vs,omitempty"`
 }
 
 //ServiceEndpoint 服务端点
@@ -21,6 +22,12 @@ type ServiceEndpoint struct {
 	Hostname string                 `json:"hostname"`
 	Config   map[string]interface{} `json:"config"`
 	Domain   string                 `json:"domain,omitempty"`
+}
+
+//VirtualServer Linux Virtual Server
+type VirtualServer struct {
+	ClusterIP string   `json:"clusterIP,omitempty"`
+	Ports     []string `json:"ports"`
 }
 
 //ServiceValues 配置参数

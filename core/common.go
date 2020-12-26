@@ -8,3 +8,10 @@ const (
 	//ServicePortLabelKey ...
 	ServicePortLabelKey = "oars.hashwing.cn/port"
 )
+
+//network
+
+const (
+	//IPVSNicName ipvs nic name
+	IPVSNicName = "oars-ipvs0"
+)

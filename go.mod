@@ -21,12 +21,14 @@ require (
 	github.com/joho/godotenv v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.0.14
+	github.com/moby/ipvs v1.0.1
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/prometheus/client_golang v1.0.0
 	github.com/shirou/gopsutil/v3 v3.20.10
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
+	github.com/vishvananda/netlink v1.1.0
 	go.etcd.io/etcd v3.3.25+incompatible
 	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb
 	google.golang.org/grpc v1.27.0
