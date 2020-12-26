@@ -31,7 +31,7 @@ func Start(c *client.Client, node core.NodeConfig) {
 
 // Return - returns a map of metrics to be used by the exporter
 func Return() map[string]*prometheus.Desc {
-	labels := []string{"namespace", "servive", "hostname", "container_id", "container_name"}
+	labels := []string{"namespace", "servive", "hostname", "name"}
 	labelsInterface := append(labels, "interface")
 	containerMetrics := make(map[string]*prometheus.Desc)
 
@@ -105,6 +105,52 @@ func Return() map[string]*prometheus.Desc {
 		"Network TX Packets",
 		labelsInterface, nil,
 	)
-
+	//node
+	labelsNode := []string{"hostname"}
+	containerMetrics["nodeMemoryUsageBytes"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "memory", "usage_bytes"),
+		"Current memory usage in bytes for the specified node",
+		labelsNode, nil,
+	)
+	containerMetrics["nodeMemoryTotalBytes"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "memory", "total_bytes"),
+		"Current memory total in bytes for the specified node",
+		labelsNode, nil,
+	)
+	containerMetrics["nodeMemoryCacheBytes"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "memory", "cache_bytes"),
+		"Current memory cache in bytes for the specified node",
+		labelsNode, nil,
+	)
+	containerMetrics["nodeMemoryUsagePercent"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "memory", "usage_percent"),
+		"memory usage percent for the specified node",
+		labels, nil,
+	)
+	containerMetrics["nodeCpuCoreNum"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "cpu", "core_num"),
+		"CPU core number for the specified node",
+		labels, nil,
+	)
+	containerMetrics["nodeCpuUsagePercent"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "cpu", "usage_percent"),
+		"CPU usage percent for the specified node",
+		labels, nil,
+	)
+	containerMetrics["nodeCpuLoad1"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "cpu", "load1"),
+		"CPU load1 for the specified node",
+		labels, nil,
+	)
+	containerMetrics["nodeCpuLoad5"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "cpu", "load5"),
+		"CPU load5 for the specified node",
+		labels, nil,
+	)
+	containerMetrics["nodeCpuLoad15"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "cpu", "load15"),
+		"CPU load15 for the specified node",
+		labels, nil,
+	)
 	return containerMetrics
 }

@@ -19,6 +19,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect function, called on by Prometheus Client library
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	logrus.Info("Metric collection requested")
+	go e.setNodeMetrics(ch)
 
 	metrics, err := e.asyncRetrieveMetrics()
 
@@ -41,14 +42,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 // setPrometheusMetrics takes the pointer to ContainerMetrics and uses the data to set the guages and counters
 func (e *Exporter) setPrometheusMetrics(stats *ContainerMetrics, ch chan<- prometheus.Metric) {
-	if !strings.HasPrefix(stats.Name, "sunrunfaas_") {
+	if !strings.HasPrefix(stats.Name, "oars_") {
 		return
 	}
 	names := strings.Split(stats.Name, "_")
 	if len(names) != 4 {
 		return
 	}
-	labels := []string{names[1], names[2], e.node.Hostname, stats.ID, stats.Name}
+	labels := []string{names[1], names[2], e.node.Hostname, names[3]}
 
 	// Set CPU metrics
 	ch <- prometheus.MustNewConstMetric(e.containerMetrics["cpuUsagePercent"], prometheus.GaugeValue, calcCPUPercent(stats), labels...)
