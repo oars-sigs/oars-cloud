@@ -36,26 +36,27 @@ func GetNodeInfo() (*NodeInfo, error) {
 }
 
 func (e *Exporter) setNodeMetrics(ch chan<- prometheus.Metric) {
+	labels := []string{e.node.Hostname}
 	m, err := mem.VirtualMemory()
 	if err == nil {
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryUsageBytes"], prometheus.GaugeValue, float64(m.Used))
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryUsagePercent"], prometheus.GaugeValue, m.UsedPercent)
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryTotalBytes"], prometheus.GaugeValue, float64(m.Total))
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryCacheBytes"], prometheus.GaugeValue, float64(m.Cached))
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryUsageBytes"], prometheus.GaugeValue, float64(m.Used), labels...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryUsagePercent"], prometheus.GaugeValue, m.UsedPercent, labels...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryTotalBytes"], prometheus.GaugeValue, float64(m.Total), labels...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeMemoryCacheBytes"], prometheus.GaugeValue, float64(m.Cached), labels...)
 	}
 	coreNum, err := cpu.Counts(true)
 	if err == nil {
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuCoreNum"], prometheus.GaugeValue, float64(coreNum))
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuCoreNum"], prometheus.GaugeValue, float64(coreNum), labels...)
 	}
 	percents, err := cpu.Percent(time.Second, false)
-	if err == nil {
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuUsagePercent"], prometheus.GaugeValue, percents[0])
+	if err == nil && len(percents) > 0 {
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuUsagePercent"], prometheus.GaugeValue, percents[0], labels...)
 	}
 	load, err := load.Avg()
 	if err == nil {
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad1"], prometheus.GaugeValue, load.Load1)
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad5"], prometheus.GaugeValue, load.Load5)
-		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad15"], prometheus.GaugeValue, load.Load15)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad1"], prometheus.GaugeValue, load.Load1, labels...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad5"], prometheus.GaugeValue, load.Load5, labels...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad15"], prometheus.GaugeValue, load.Load15, labels...)
 
 	}
 }
