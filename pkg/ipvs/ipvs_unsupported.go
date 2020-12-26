@@ -1,3 +1,5 @@
+// +build !linux
+
 package ipvs
 
 import "errors"

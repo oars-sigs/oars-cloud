@@ -1,3 +1,5 @@
+// +build linux
+
 package ipvs
 
 import (
@@ -108,7 +110,7 @@ func (c *Client) GetDestinations(vs *Service) ([]*Destination, error) {
 
 func toService(svc *libipvs.Service) (*Service, error) {
 	vs := &Service{
-		Address:   svc.Address,
+		Address:   svc.Address.String(),
 		Port:      svc.Port,
 		Scheduler: svc.SchedName,
 		Protocol:  protocolToString(svc.Protocol),
@@ -120,7 +122,7 @@ func toService(svc *libipvs.Service) (*Service, error) {
 
 func toDestination(dst *libipvs.Destination) (*Destination, error) {
 	return &Destination{
-		Address: dst.Address,
+		Address: dst.Address.String(),
 		Port:    dst.Port,
 		Weight:  dst.Weight,
 	}, nil
@@ -128,19 +130,21 @@ func toDestination(dst *libipvs.Destination) (*Destination, error) {
 
 func toIPVSService(vs *Service) (*libipvs.Service, error) {
 	ipvsSvc := &libipvs.Service{
-		Address:   net.ParseIP(vs.Address),
-		Protocol:  stringToProtocol(vs.Protocol),
-		Port:      vs.Port,
-		SchedName: vs.Scheduler,
-		Flags:     uint32(vs.Flags),
-		Timeout:   vs.Timeout,
+		Address:       net.ParseIP(vs.Address),
+		Protocol:      stringToProtocol(vs.Protocol),
+		Port:          vs.Port,
+		SchedName:     vs.Scheduler,
+		Flags:         uint32(vs.Flags),
+		Timeout:       vs.Timeout,
+		AddressFamily: syscall.AF_INET,
+		Netmask:       0xffffffff,
 	}
 	return ipvsSvc, nil
 }
 
 func toIPVSDestination(rs *Destination) (*libipvs.Destination, error) {
 	return &libipvs.Destination{
-		Address: rs.Address.String(),
+		Address: net.ParseIP(vs.Address),
 		Port:    rs.Port,
 		Weight:  rs.Weight,
 	}, nil

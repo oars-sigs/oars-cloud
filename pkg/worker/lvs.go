@@ -102,29 +102,21 @@ func (l *lvs) syncService() error {
 			}
 		}
 		if !addrExist {
-			err = l.addAddr(svc.VirtualServer.ClusterIP)
+			err = l.addAddr(svc.VirtualServer.ClusterIP + "/32")
 			if err != nil {
 				logrus.Error(err)
 				continue
 			}
 		}
-		vsExist := false
-		for _, ipvsSvc := range ipvsSvcs {
-			if ipvsSvc.Address == svc.VirtualServer.ClusterIP {
-				vsExist = true
-				break
+
+		dstIPs := make([]string, 0)
+		for _, res := range edpRess {
+			edp := res.(*core.Endpoint)
+			if edp.Service == svc.Name && edp.Status.State == "running" {
+				dstIPs = append(dstIPs, edp.Status.IP)
 			}
 		}
-		if !vsExist {
-			dstIPs := make([]string, 0)
-			for _, res := range edpRess {
-				edp := res.(*core.Endpoint)
-				if edp.Service == svc.Name && edp.Status.State == "running" {
-					dstIPs = append(dstIPs, edp.Status.IP)
-				}
-			}
-			l.addService(svc.VirtualServer, dstIPs)
-		}
+		l.addService(svc.VirtualServer, dstIPs, ipvsSvcs)
 	}
 
 	//gc lvs servers
@@ -181,7 +173,7 @@ func (l *lvs) addAddr(ip string) error {
 	return netlink.AddrAdd(l.ipvsLink, clusterAddr)
 }
 
-func (l *lvs) addService(vs *core.VirtualServer, dstIPs []string) error {
+func (l *lvs) addService(vs *core.VirtualServer, dstIPs []string, ipvsSvcs []*ipvs.Service) error {
 	for _, portStr := range vs.Ports {
 		protocol, svcPort, targetPort, err := parsePort(portStr)
 		if err != nil {
@@ -196,12 +188,22 @@ func (l *lvs) addService(vs *core.VirtualServer, dstIPs []string) error {
 			Flags:     0,
 			Timeout:   0,
 		}
-
-		err = l.ipvsClient.AddService(ipvsSvc)
-		if err != nil {
-			logrus.Error(err)
-			continue
+		vsExist := false
+		for _, oipvsSvc := range ipvsSvcs {
+			if oipvsSvc.Address == vs.ClusterIP && int(oipvsSvc.Port) == svcPort {
+				vsExist = true
+				ipvsSvc = oipvsSvc
+				break
+			}
 		}
+		if !vsExist {
+			err = l.ipvsClient.AddService(ipvsSvc)
+			if err != nil {
+				logrus.Error(err)
+				continue
+			}
+		}
+
 		ipvsDsts, err := l.ipvsClient.GetDestinations(ipvsSvc)
 		if err != nil {
 			logrus.Error(err)
