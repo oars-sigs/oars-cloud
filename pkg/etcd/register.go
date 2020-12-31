@@ -25,10 +25,15 @@ func (s *Storage) Register(ctx context.Context, kv core.KV, lease int64) (core.K
 		return nil, err
 	}
 	//设置续租 定期发送需求请求
-	_, err = s.client.KeepAlive(context.Background(), resp.ID)
+	ch, err := s.client.KeepAlive(context.Background(), resp.ID)
 	if err != nil {
 		return nil, err
 	}
+	go func() {
+		for {
+			<-ch
+		}
+	}()
 	ser := &register{
 		client:  s.client,
 		leaseID: resp.ID,
