@@ -43,34 +43,37 @@ export default {
     init: function () {
       const height = window.innerHeight - 170;
       const width = window.innerWidth - 256;
-      let cols = parseInt(width/9, 10);
-      let hostname= this.$route.query.hostname;
-      let id= this.$route.query.id;
-      this.navs.push({text:this.$route.query.name})
+      let cols = parseInt(width / 9, 10);
+      let hostname = this.$route.query.hostname;
+      let id = this.$route.query.id;
+      this.navs.push({ text: this.$route.query.name });
       let term = new Terminal({
         cursorBlink: true,
         //rows: parseInt(height/20, 10),
         cols: cols,
       });
-      this.term=term
+      this.term = term;
       let terminalContainer = document.getElementById("terminal");
-      terminalContainer.style.height=height+"px";
+      terminalContainer.style.height = height + "px";
       const fitAddon = new FitAddon();
       this.term.loadAddon(fitAddon);
       this.term.open(terminalContainer);
       fitAddon.fit();
       this.term.focus();
       this.term.scrollToBottom();
-      let ws = new WebSocket(`ws://${window.location.host}/api/exec/${hostname}/${id}` );
-      this.ws=ws
+      let protocol = window.location.protocol == "https" ? "wss" : "ws"; 
+      let ws = new WebSocket(
+        `${protocol}://${window.location.host}/api/exec/${hostname}/${id}`
+      );
+      this.ws = ws;
       this.ws.binaryType = "arraybuffer";
       this.ws.onmessage = function (e) {
-          let buf = new TextDecoder().decode(e.data);
-          term.write(buf);
+        let buf = new TextDecoder().decode(e.data);
+        term.write(buf);
       };
-        term.onData(data=>{
-            this.ws.send(data);
-        });
+      term.onData((data) => {
+        this.ws.send(data);
+      });
       this.term._initialized = true;
     },
   },
