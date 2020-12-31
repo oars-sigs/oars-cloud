@@ -309,6 +309,11 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 			HttpFilters: []*hcm.HttpFilter{{
 				Name: wellknown.Router,
 			}},
+			UpgradeConfigs: []*hcm.HttpConnectionManager_UpgradeConfig{
+				{
+					UpgradeType: "websocket",
+				},
+			},
 		}
 		pbst, err := ptypes.MarshalAny(manager)
 		if err != nil {
