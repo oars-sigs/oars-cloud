@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/server/routers"
@@ -19,6 +20,9 @@ import (
 func Start(mgr *core.APIManager) error {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	r.Use(cors.New(config))
 	routers.NewV1(r, mgr)
 	uiHandle := MakeGzipHandler(http.FileServer(ui.New()))
 	r.GET("/", gin.WrapH(uiHandle))
