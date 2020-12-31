@@ -2,29 +2,16 @@ package worker
 
 import (
 	"context"
-	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
+	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 	"github.com/oars-sigs/oars-cloud/pkg/worker/metrics"
-	"github.com/sirupsen/logrus"
 )
 
-func (d *daemon) initNode() {
-	d.putNode()
-	t := time.NewTicker(5 * time.Second)
-	for {
-		select {
-		case <-t.C:
-			d.putNode()
-		}
-	}
-
-}
-
-func (d *daemon) putNode() {
+func (d *daemon) initNode() error {
 	nodeInfo, err := metrics.GetNodeInfo()
 	if err != nil {
-		logrus.Error(err)
+		return err
 	}
 	endpoint := &core.Endpoint{
 		ResourceMeta: &core.ResourceMeta{
@@ -47,6 +34,11 @@ func (d *daemon) putNode() {
 	}
 	_, err = d.edpstore.Put(context.Background(), endpoint, &core.PutOptions{})
 	if err != nil {
-		logrus.Error(err)
+		return err
 	}
+	endpoint.ResourceMeta.ObjectKind = &core.ResourceObjectKind{
+		IsRegister: true,
+	}
+	_, err = resStore.NewRegister(d.store, endpoint, 10)
+	return err
 }

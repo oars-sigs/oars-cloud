@@ -25,6 +25,11 @@ type WatchChan struct {
 	KV     KV
 }
 
+//KVRegister 注册
+type KVRegister interface {
+	Close() error
+}
+
 //KVStore kv 存储
 type KVStore interface {
 	Put(ctx context.Context, kv KV) error
@@ -32,4 +37,5 @@ type KVStore interface {
 	GetWithRev(ctx context.Context, key string, op KVOption) ([]KV, int64, error)
 	Delete(ctx context.Context, key string, op KVOption) error
 	Watch(ctx context.Context, key string, updateCh chan WatchChan, errCh chan error, op KVOption)
+	Register(ctx context.Context, kv KV, lease int64) (KVRegister, error)
 }

@@ -159,7 +159,8 @@ func (d *daemon) cacheContainers() {
 				edp := d.cantainerToEndpoint(cn)
 				edps[edp.Status.ID] = edp
 				if oldedp, ok := d.endpointCache[edp.Status.ID]; ok {
-					if oldedp.Status.IP != edp.Status.IP || oldedp.Status.StateDetail != edp.Status.StateDetail {
+					if oldedp.Status.IP != edp.Status.IP || oldedp.Status.State != edp.Status.State || oldedp.Status.ID != edp.Status.ID {
+						edp.SetCreated(time.Now().Unix())
 						putEps = append(putEps, edp)
 					}
 					continue

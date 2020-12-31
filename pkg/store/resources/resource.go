@@ -8,6 +8,11 @@ import (
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 )
 
+const (
+	lockPrefixKey     = "lock/"
+	registerPrefixKey = "register/"
+)
+
 type store struct {
 	kvstore core.KVStore
 	cur     core.Resource
@@ -76,9 +81,19 @@ func (s *store) Delete(ctx context.Context, arg core.Resource, opts *core.Delete
 }
 
 func getKey(arg core.Resource) string {
-	return arg.ResourceGroup() + "/" + arg.ResourceKind() + "/" + arg.ResourceKey()
+	return keyPrefix(arg) + arg.ResourceGroup() + "/" + arg.ResourceKind() + "/" + arg.ResourceKey()
 }
 
 func getPrefixKey(arg core.Resource) string {
-	return arg.ResourceGroup() + "/" + arg.ResourceKind() + "/" + arg.ResourcePrefixKey()
+	return keyPrefix(arg) + arg.ResourceGroup() + "/" + arg.ResourceKind() + "/" + arg.ResourcePrefixKey()
+}
+
+func keyPrefix(arg core.Resource) string {
+	if arg.IsLock() {
+		return lockPrefixKey
+	}
+	if arg.IsRegister() {
+		return registerPrefixKey
+	}
+	return ""
 }

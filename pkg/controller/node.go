@@ -10,9 +10,10 @@ import (
 )
 
 type nodeController struct {
-	kv     core.KVStore
-	store  core.ResourceStore
-	lister core.ResourceLister
+	kv        core.KVStore
+	store     core.ResourceStore
+	lister    core.ResourceLister
+	regLister core.ResourceLister
 }
 
 func newNodec(kv core.KVStore) *nodeController {
@@ -21,11 +22,32 @@ func newNodec(kv core.KVStore) *nodeController {
 
 func (c *nodeController) runNodec(stopCh chan struct{}) error {
 	c.store = resStore.NewStore(c.kv, new(core.Endpoint))
-	lister, err := resStore.NewLister(c.kv, &core.Endpoint{ResourceMeta: &core.ResourceMeta{Namespace: "system"}, Service: "node"}, &core.ResourceEventHandle{})
+	edp := &core.Endpoint{
+		ResourceMeta: &core.ResourceMeta{
+			Namespace: "system",
+		},
+		Service: "node",
+	}
+	lister, err := resStore.NewLister(c.kv, edp, &core.ResourceEventHandle{})
 	if err != nil {
 		return err
 	}
 	c.lister = lister
+	edpReg := &core.Endpoint{
+		ResourceMeta: &core.ResourceMeta{
+			Namespace: "system",
+			ObjectKind: &core.ResourceObjectKind{
+				IsRegister: true,
+			},
+		},
+		Service: "node",
+	}
+	regLister, err := resStore.NewLister(c.kv, edpReg, &core.ResourceEventHandle{})
+	if err != nil {
+		return err
+	}
+	c.regLister = regLister
+
 	checkStopCh := make(chan struct{})
 	c.healthCheck(checkStopCh)
 	return nil
@@ -40,9 +62,22 @@ func (c *nodeController) healthCheck(stopCh <-chan struct{}) {
 			if !ok {
 				continue
 			}
+			regResources, ok := c.regLister.List()
+			if !ok {
+				continue
+			}
+
 			for _, resource := range resources {
 				endpoint := resource.(*core.Endpoint)
-				if time.Now().Unix()-endpoint.Updated > 60 && endpoint.Status.State == "running" {
+				isExist := false
+				for _, regResource := range regResources {
+					regEdp := regResource.(*core.Endpoint)
+					if regEdp.Name == endpoint.Name {
+						isExist = true
+					}
+				}
+
+				if !isExist {
 					endpoint.Status.State = "error"
 					endpoint.Status.StateDetail = "health check timeout"
 					_, err := c.store.Put(context.Background(), endpoint, &core.PutOptions{})

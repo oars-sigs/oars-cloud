@@ -47,7 +47,10 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 	if err != nil {
 		return err
 	}
-	go d.initNode()
+	err = d.initNode()
+	if err != nil {
+		return err
+	}
 	go d.run()
 	go d.dnsServer()
 	err = startLVS(d.svcLister, d.edpLister)
