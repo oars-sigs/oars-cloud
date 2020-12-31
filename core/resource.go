@@ -41,6 +41,9 @@ func (m *ResourceMeta) GetUpdated() int64 {
 
 //IsRegister ...
 func (m *ResourceMeta) IsRegister() bool {
+	if m == nil {
+		return false
+	}
 	if m.ObjectKind != nil {
 		return m.ObjectKind.IsRegister
 	}
@@ -49,6 +52,9 @@ func (m *ResourceMeta) IsRegister() bool {
 
 //IsLock ...
 func (m *ResourceMeta) IsLock() bool {
+	if m == nil {
+		return false
+	}
 	if m.ObjectKind != nil {
 		return m.ObjectKind.IsLock
 	}

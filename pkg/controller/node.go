@@ -77,7 +77,7 @@ func (c *nodeController) healthCheck(stopCh <-chan struct{}) {
 					}
 				}
 
-				if !isExist {
+				if !isExist && endpoint.Status.State == "running" {
 					endpoint.Status.State = "error"
 					endpoint.Status.StateDetail = "health check timeout"
 					_, err := c.store.Put(context.Background(), endpoint, &core.PutOptions{})

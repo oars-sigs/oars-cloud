@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"strings"
 
 	"github.com/oars-sigs/oars-cloud/core"
 )
@@ -12,8 +13,12 @@ type register struct {
 
 //NewRegister ...
 func NewRegister(store core.KVStore, resource core.Resource, lease int64) (core.ResourceRegister, error) {
+	key := getKey(resource)
+	if !strings.HasPrefix(key, registerPrefixKey) {
+		key = registerPrefixKey + getKey(resource)
+	}
 	v := core.KV{
-		Key:   registerPrefixKey + getKey(resource),
+		Key:   key,
 		Value: resource.String(),
 	}
 	reg, err := store.Register(context.Background(), v, lease)
