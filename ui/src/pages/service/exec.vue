@@ -61,7 +61,7 @@ export default {
       fitAddon.fit();
       this.term.focus();
       this.term.scrollToBottom();
-      let protocol = window.location.protocol == "https" ? "wss" : "ws"; 
+      let protocol = window.location.protocol == "https:" ? "wss" : "ws";
       let ws = new WebSocket(
         `${protocol}://${window.location.host}/api/exec/${hostname}/${id}`
       );
