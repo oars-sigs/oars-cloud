@@ -62,7 +62,14 @@ func (s *store) Put(ctx context.Context, arg core.Resource, opts *core.PutOption
 		res.SetCreated(time.Now().Unix())
 	}
 	arg.SetUpdated(time.Now().Unix())
-	arg.SetCreated(res.GetCreated())
+	if arg.GetCreated() == 0 {
+		if res.GetCreated() != 0 {
+			arg.SetCreated(res.GetCreated())
+		} else {
+			arg.SetCreated(time.Now().Unix())
+		}
+	}
+
 	v := core.KV{
 		Key:   getKey(arg),
 		Value: arg.String(),

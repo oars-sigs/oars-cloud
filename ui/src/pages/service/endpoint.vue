@@ -47,7 +47,7 @@
             <td>
               <v-tooltip right>
                 <template v-slot:activator="{ on, attrs }">
-                  <span v-on="on" v-bind="attrs">{{ item.status.state }}</span>
+                  <span v-on="on" v-bind="attrs" :class="item.status.state+'-state'">{{ item.status.state }}</span>
                 </template>
                 <span>{{ item.status.stateDetail }}</span>
               </v-tooltip>
@@ -287,4 +287,13 @@ export default {
 </script>
 
 <style>
+.running-state{
+  color: green;
+}
+.error-state{
+  color: red;
+}
+.exited-state{
+  color: red;
+}
 </style>

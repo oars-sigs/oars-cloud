@@ -10,9 +10,11 @@
   "dependencies": {
     "axios": "^0.20.0",
     "core-js": "^3.6.4",
+    "echarts": "^5.0.0",
     "js-yaml": "^3.14.0",
     "json2yaml": "^1.1.0",
     "vue": "^2.6.11",
+    "vue-echarts": "^5.0.0-beta.0",
     "vue-router": "^3.4.3",
     "vue2-ace-editor": "0.0.15",
     "vuetify": "^2.2.15",
