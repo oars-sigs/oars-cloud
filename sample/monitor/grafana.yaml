@@ -1,0 +1,20 @@
+---
+  image: "grafana/grafana"
+  volumes: 
+    - "/opt/oars/worker/data/system/grafana/data:/var/lib/grafana"
+  configmap:
+    /etc/grafana/grafana.ini: |
+      app_mode = production
+      #################################### Server ####################################
+      [server]
+      root_url = %(protocol)s://%(domain)s/
+
+      #################################### Database ####################################
+      [database]
+      type = sqlite3
+      path = grafana.db
+
+      [security]
+      admin_user = admin
+      admin_password = admin
+
