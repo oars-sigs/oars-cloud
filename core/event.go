@@ -5,9 +5,17 @@ import "encoding/json"
 //Event 事件
 type Event struct {
 	*ResourceMeta
+	Kind    string `json:"kind"`
 	From    string `json:"from"`
 	Message string `json:"message"`
 }
+
+const (
+	//CreateEventKind 创建事件
+	CreateEventKind = "create"
+	//DeleteEventKind 删除事件
+	DeleteEventKind = "delete"
+)
 
 //String ...
 func (l *Event) String() string {
@@ -39,16 +47,13 @@ func (l *Event) ResourceKind() string {
 
 //ResourceKey ...
 func (l *Event) ResourceKey() string {
-	return "namespaces/" + l.Namespace + "/" + l.Name
+	return l.Name + "/" + l.Kind
 }
 
 //ResourcePrefixKey ...
 func (l *Event) ResourcePrefixKey() string {
 	if l.ResourceMeta == nil {
-		return "namespaces/"
+		return ""
 	}
-	if l.Namespace != "" {
-		return "namespaces/" + l.Namespace + "/" + l.Name
-	}
-	return "namespaces/"
+	return l.Name
 }

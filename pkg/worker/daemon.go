@@ -17,6 +17,7 @@ type daemon struct {
 	edpLister     core.ResourceLister
 	nodeEdpLister core.ResourceLister
 	edpstore      core.ResourceStore
+	eventstore    core.ResourceStore
 	mu            *sync.Mutex
 	endpointCache map[string]*core.Endpoint //current node endpoints
 	svcCache      sync.Map                  //current node services
@@ -31,6 +32,7 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 		return err
 	}
 	edpstore := resStore.NewStore(store, new(core.Endpoint))
+	eventstore := resStore.NewStore(store, new(core.Event))
 	d := &daemon{
 		c:             cli,
 		store:         store,
@@ -38,6 +40,7 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 		mu:            new(sync.Mutex),
 		endpointCache: make(map[string]*core.Endpoint),
 		edpstore:      edpstore,
+		eventstore:    eventstore,
 	}
 	err = d.cacheEndpoint()
 	if err != nil {

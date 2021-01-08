@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
@@ -41,4 +42,21 @@ func (d *daemon) initNode() error {
 	}
 	_, err = resStore.NewRegister(d.store, endpoint, 10)
 	return err
+}
+
+func (d *daemon) addEvent(r core.Resource, kind, msg string) {
+	d.delEvent(r, kind)
+	event := d.convEvent(d.resourceName(r), kind, msg)
+	_, err := d.eventstore.Put(context.Background(), event, &core.PutOptions{})
+	if err != nil {
+		logrus.Error(err)
+	}
+}
+
+func (d *daemon) delEvent(r core.Resource, kind string) {
+	event := d.convEvent(d.resourceName(r), kind, "")
+	err := d.eventstore.Delete(context.Background(), event, &core.DeleteOptions{})
+	if err != nil {
+		logrus.Error(err)
+	}
 }

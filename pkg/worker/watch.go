@@ -270,35 +270,38 @@ func (d *daemon) syncDockerSvc() error {
 	delGw := new(sync.WaitGroup)
 	delGw.Add(len(delList))
 	for _, endpoint := range delList {
-		go func(id string) {
-			err := d.Remove(ctx, id)
+		go func(edp *core.Endpoint) {
+			err := d.Remove(ctx, edp.Status.ID)
 			if err != nil {
 				if d.dockerError(err) != errNotFound {
 					logrus.Error(err)
+					d.addEvent(edp, core.DeleteEventKind, err.Error())
 				}
 			}
 			delGw.Done()
-		}(endpoint.Status.ID)
+		}(endpoint)
 	}
 
 	//TODO 并发？
 	//创建容器
 	for _, svc := range addList {
+		//如果有旧容器，先删除
+		edp := d.cserviceToEndpoint(svc)
 		if svc.ID != "" {
 			err := d.Remove(ctx, svc.ID)
 			if err != nil {
 				logrus.Error(err)
+				d.addEvent(edp, core.DeleteEventKind, err.Error())
 				continue
 			}
 		}
 		err := d.Create(ctx, svc)
 		if err != nil {
 			logrus.Error(err)
+			d.addEvent(edp, core.CreateEventKind, err.Error())
 			continue
 		}
 		//防止新建容器未同步，导致重复创建
-		edp := d.getEndpointByContainerName(svc.Name)
-		edp.Labels = svc.Labels
 		d.mu.Lock()
 		d.endpointCache[d.containerNameByEdp(edp)] = edp
 		d.mu.Unlock()
