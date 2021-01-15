@@ -294,9 +294,11 @@ func (d *daemon) syncDockerSvc() error {
 			d.addEvent(edp, core.DeleteEventAction, core.InProgressEventStatus, "")
 			err := d.Remove(ctx, svc.ID)
 			if err != nil {
-				logrus.Error(err)
-				d.addEvent(edp, core.DeleteEventAction, core.FailEventStatus, err.Error())
-				continue
+				if d.dockerError(err) != errNotFound {
+					logrus.Error(err)
+					d.addEvent(edp, core.DeleteEventAction, core.FailEventStatus, err.Error())
+					continue
+				}
 			}
 			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
 		}

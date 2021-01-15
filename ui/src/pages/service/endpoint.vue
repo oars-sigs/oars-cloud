@@ -35,6 +35,7 @@
           <tr>
             <th class="text-left">端点</th>
             <th class="text-left">节点</th>
+            <th class="text-left">IP</th>
             <th>状态</th>
             <th>创建时间</th>
             <th class="text-right">操作</th>
@@ -44,13 +45,9 @@
           <tr v-for="item in endpoints" :key="item.id">
             <td>{{ item.namespace }}_{{ item.service }}_{{ item.name }}</td>
             <td>{{ item.status.node.hostname }}</td>
+            <td>{{ item.status.ip }}</td>
             <td>
-              <v-tooltip right>
-                <template v-slot:activator="{ on, attrs }">
-                  <span v-on="on" v-bind="attrs" :class="item.status.state+'-state'">{{ item.status.state }}</span>
-                </template>
-                <span>{{ item.status.stateDetail }}</span>
-              </v-tooltip>
+              <span v-on="on" v-bind="attrs" :class="item.status.state+'-state'">{{ item.status.state }}</span>
             </td>
             <td>{{ item.created | formatT }}</td>
             <td class="text-right">
@@ -87,6 +84,7 @@
     <v-overlay :value="overlay">
       <v-progress-circular indeterminate size="64"></v-progress-circular>
     </v-overlay>
+    <!-- 日志 -->
     <v-dialog
       v-model="logDialog"
       persistent
@@ -107,9 +105,63 @@
             @click="
               logDialog = false;
               initActionParam();
-              term.dispose();
             "
             >取消</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <!-- 事件 -->
+    <v-dialog
+      v-model="eventDialog"
+      persistent
+      :scrollable="true"
+      max-width="1000"
+    >
+      <v-card>
+        <v-card-title>服务‘{{ actionParam.args.name }}’事件</v-card-title>
+        <v-card-text>
+          <v-simple-table dense>
+            <template v-slot:default>
+              <thead>
+                <tr>
+                  <th class="text-left">
+                    时间
+                  </th>
+                  <th class="text-left">
+                    操作
+                  </th>
+                  <th class="text-left">
+                    状态
+                  </th>
+                  <th class="text-left">
+                    信息
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in events"
+                  :key="item.name"
+                >
+                  <td>{{ item.updated | formatT }}</td>
+                  <td>{{ item.action }}</td>
+                  <td>{{ item.status }}</td>
+                  <td :class="item.status+'-state'">{{ item.message }}</td>
+                </tr>
+              </tbody>
+            </template>
+          </v-simple-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            text
+            @click="
+              eventDialog = false;
+              initActionParam();
+            "
+            >关闭</v-btn
           >
         </v-card-actions>
       </v-card>
@@ -124,6 +176,7 @@ export default {
     return {
       dialog: false,
       logDialog: false,
+      eventDialog: false,
       overlay: false,
       navs: [
         {
@@ -153,6 +206,11 @@ export default {
           key: "log",
         },
         {
+          title: "事件",
+          icon: "mdi-file-document",
+          key: "event",
+        },
+        {
           title: "终端",
           icon: "mdi-powershell",
           key: "shell",
@@ -163,6 +221,7 @@ export default {
       namespaces: [],
       services: [],
       endpoints: [],
+      events: [],
       actionParam: {},
       logs: "",
       term: {},
@@ -174,7 +233,7 @@ export default {
       if (time){
         time = time * 1000;
         let date = new Date(time);
-        return formatDate(date, "yyyy-MM-dd hh:mm");
+        return formatDate(date, "yyyy-MM-dd hh:mm:ss");
       }
       return "--";
     },
@@ -280,6 +339,18 @@ export default {
           });
           break;
         }
+        case "event":
+          this.$call("system.admin.endpoint.event", this.actionParam.args).then(
+            (resp) => {
+              let datas=resp.data.sort((a,b)=>{
+                console.log(a,b)
+                    return a.updated-b.updated;
+              });
+              _that.eventDialog=true;
+              _that.events=datas
+            }
+          );
+          break;
       }
     },
   },
@@ -294,6 +365,9 @@ export default {
   color: red;
 }
 .exited-state{
+  color: red;
+}
+.fail-state{
   color: red;
 }
 </style>

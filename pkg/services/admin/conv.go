@@ -14,11 +14,11 @@ func unmarshalArgs(in, out interface{}) error {
 	}
 	inType := reflect.TypeOf(in)
 	outType := reflect.TypeOf(out)
-	inpType := reflect.TypeOf(&in)
 	if inType == outType {
-		out = in
+		reflect.ValueOf(out).Elem().Set(reflect.ValueOf(in).Elem())
 		return nil
 	}
+	inpType := reflect.TypeOf(&in)
 	if inpType == outType {
 		out = &in
 		return nil
