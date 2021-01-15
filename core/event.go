@@ -73,3 +73,11 @@ func (l *Event) ResourcePrefixKey() string {
 	}
 	return l.Name + "/"
 }
+
+//GenName ...
+func (l *Event) GenName(r Resource) {
+	if l.ResourceMeta == nil {
+		l.ResourceMeta = new(ResourceMeta)
+	}
+	l.ResourceMeta.Name = r.ResourceGroup() + "/" + r.ResourceKind() + "/" + r.ResourceKey()
+}

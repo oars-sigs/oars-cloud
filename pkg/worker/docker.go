@@ -25,7 +25,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 	for _, v := range svc.Volumes {
 		ms := strings.Split(v, ":")
 		if len(ms) != 2 {
-			return errors.New("volumes format error")
+			return "", errors.New("volumes format error")
 		}
 		os.MkdirAll(ms[0], 0755)
 		mounts = append(mounts, mount.Mount{
@@ -150,7 +150,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		if svc.ImagePullPolicy == core.ImagePullIfNotPresent {
 			imgs, err := d.c.ImageList(ctx, types.ImageListOptions{})
 			if err != nil {
-				return err
+				return "", err
 			}
 			imgExist := false
 			for _, img := range imgs {
@@ -165,7 +165,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		if pullFlag {
 			distributionRef, err := reference.ParseNormalizedNamed(svc.Image)
 			if err != nil {
-				return err
+				return "", err
 			}
 			fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{})
 			if err != nil {

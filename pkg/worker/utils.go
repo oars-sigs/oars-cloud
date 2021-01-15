@@ -100,18 +100,13 @@ func (d *daemon) cserviceToEndpoint(cservice *core.ContainerService) *core.Endpo
 	return edp
 }
 
-func (d *daemon) convEvent(name, action, status, message string) *core.Event {
-	return &core.Event{
-		ResourceMeta: &core.ResourceMeta{
-			Name: name,
-		},
+func (d *daemon) convEvent(r core.Resource, action, status, message string) *core.Event {
+	event := &core.Event{
 		Action:  action,
 		Status:  status,
 		From:    "worker-" + d.node.Hostname,
 		Message: message,
 	}
-}
-
-func (d *daemon) resourceName(r core.Resource) string {
-	return r.ResourceGroup() + "/" + r.ResourceKind() + "/" + r.ResourceKey()
+	event.GenName(r)
+	return event
 }

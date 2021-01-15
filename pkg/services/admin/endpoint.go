@@ -27,6 +27,8 @@ func (s *service) regEndpoint(ctx context.Context, action string, args interface
 		return s.GetEndPointLog(args)
 	case "exec":
 		return s.ExecEndPoint(ctx, args)
+	case "event":
+		return s.GetEndPointEvent(args)
 	}
 	return e.MethodNotFoundMethod()
 }
@@ -41,6 +43,17 @@ func (s *service) GetEndPoint(args interface{}) *core.APIReply {
 	ctx := context.TODO()
 	endpoints, err := s.edpStore.List(ctx, &endpoint, &core.ListOptions{})
 	return core.NewAPIReply(endpoints)
+}
+
+func (s *service) GetEndPointEvent(args interface{}) *core.APIReply {
+	var edp core.Endpoint
+	err := unmarshalArgs(args, &edp)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	event := new(core.Event)
+	event.GenName(&edp)
+	return s.GetEvent(event)
 }
 
 func (s *service) RestartEndPoint(args interface{}) *core.APIReply {

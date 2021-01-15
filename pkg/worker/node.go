@@ -46,15 +46,15 @@ func (d *daemon) initNode() error {
 
 func (d *daemon) addEvent(r core.Resource, action, status, msg string) {
 	d.delEvent(r, action, status)
-	event := d.convEvent(d.resourceName(r), action, status, msg)
+	event := d.convEvent(r, action, status, msg)
 	_, err := d.eventstore.Put(context.Background(), event, &core.PutOptions{})
 	if err != nil {
 		logrus.Error(err)
 	}
 }
 
-func (d *daemon) delEvent(r core.Resource, kind string) {
-	event := d.convEvent(d.resourceName(r), action, status, "")
+func (d *daemon) delEvent(r core.Resource, action, status string) {
+	event := d.convEvent(r, action, status, "")
 	err := d.eventstore.Delete(context.Background(), event, &core.DeleteOptions{})
 	if err != nil {
 		logrus.Error(err)
