@@ -10,7 +10,9 @@ import (
 func NewV1(r *gin.Engine, mgr *core.APIManager) {
 	basec := &base.BaseController{Mgr: mgr}
 	gatewayc := &v1.GatewayController{BaseController: basec}
+	proxyc := &v1.ProxyController{BaseController: basec}
 	r.GET("/health", basec.Health)
+	r.Any("/proxy/:namespace/:service/:protocol/:port", proxyc.Proxy)
 	apiv1 := r.Group("/api")
 	apiv1.POST("gateway", gatewayc.Gateway)
 	apiv1.GET("exec/:hostname/:id", gatewayc.Exec)
