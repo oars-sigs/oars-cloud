@@ -100,12 +100,13 @@ func (d *daemon) cserviceToEndpoint(cservice *core.ContainerService) *core.Endpo
 	return edp
 }
 
-func (d *daemon) convEvent(name, kind, message string) *core.Event {
+func (d *daemon) convEvent(name, action, status, message string) *core.Event {
 	return &core.Event{
 		ResourceMeta: &core.ResourceMeta{
 			Name: name,
 		},
-		Kind:    kind,
+		Action:  action,
+		Status:  status,
 		From:    "worker-" + d.node.Hostname,
 		Message: message,
 	}

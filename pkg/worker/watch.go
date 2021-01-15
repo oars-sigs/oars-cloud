@@ -219,6 +219,7 @@ func (d *daemon) cacheContainers() {
 					if err != nil {
 						logrus.Error(err)
 					}
+					d.delEvent(endpoint, "", "")
 				}
 			}
 		}
@@ -271,13 +272,15 @@ func (d *daemon) syncDockerSvc() error {
 	delGw.Add(len(delList))
 	for _, endpoint := range delList {
 		go func(edp *core.Endpoint) {
+			d.addEvent(edp, core.DeleteEventAction, core.InProgressEventStatus, "")
 			err := d.Remove(ctx, edp.Status.ID)
 			if err != nil {
 				if d.dockerError(err) != errNotFound {
 					logrus.Error(err)
-					d.addEvent(edp, core.DeleteEventKind, err.Error())
+					d.addEvent(edp, core.DeleteEventAction, core.FailEventStatus, err.Error())
 				}
 			}
+			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
 			delGw.Done()
 		}(endpoint)
 	}
@@ -288,19 +291,33 @@ func (d *daemon) syncDockerSvc() error {
 		//如果有旧容器，先删除
 		edp := d.cserviceToEndpoint(svc)
 		if svc.ID != "" {
+			d.addEvent(edp, core.DeleteEventAction, core.InProgressEventStatus, "")
 			err := d.Remove(ctx, svc.ID)
 			if err != nil {
 				logrus.Error(err)
-				d.addEvent(edp, core.DeleteEventKind, err.Error())
+				d.addEvent(edp, core.DeleteEventAction, core.FailEventStatus, err.Error())
 				continue
 			}
+			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
 		}
-		err := d.Create(ctx, svc)
+		d.addEvent(edp, core.CreateEventAction, core.InProgressEventStatus, "")
+		id, err := d.Create(ctx, svc)
 		if err != nil {
 			logrus.Error(err)
-			d.addEvent(edp, core.CreateEventKind, err.Error())
+			d.addEvent(edp, core.CreateEventAction, core.FailEventStatus, err.Error())
 			continue
 		}
+		d.addEvent(edp, core.CreateEventAction, core.SuccessEventStatus, "")
+		go func() {
+			d.addEvent(edp, core.StartEventAction, core.InProgressEventStatus, "")
+			err = d.Start(ctx, id)
+			if err != nil {
+				d.addEvent(edp, core.StartEventAction, core.FailEventStatus, err.Error())
+				logrus.Error(err)
+				return
+			}
+			d.addEvent(edp, core.StartEventAction, core.SuccessEventStatus, "")
+		}()
 		//防止新建容器未同步，导致重复创建
 		d.mu.Lock()
 		d.endpointCache[d.containerNameByEdp(edp)] = edp

@@ -15,6 +15,7 @@ type service struct {
 	svcStore             core.ResourceStore
 	ingressRouteStore    core.ResourceStore
 	ingressListenerStore core.ResourceStore
+	eventStore           core.ResourceStore
 }
 
 //New admin api
@@ -26,6 +27,7 @@ func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
 		svcStore:             resources.NewStore(store, new(core.Service)),
 		ingressRouteStore:    resources.NewStore(store, new(core.IngressRoute)),
 		ingressListenerStore: resources.NewStore(store, new(core.IngressListener)),
+		eventStore:           resources.NewStore(store, new(core.Event)),
 	}
 	s.PutNamespace(core.Namespace{
 		ResourceMeta: &core.ResourceMeta{
@@ -75,6 +77,8 @@ func (s *service) Call(ctx context.Context, resource, action string, args interf
 		r = s.regIngressListener(ctx, action, args)
 	case "ingressRoute":
 		r = s.regIngressRoute(ctx, action, args)
+	case "event":
+		r = s.regEvent(ctx, action, args)
 	default:
 		r = e.MethodNotFoundMethod()
 	}

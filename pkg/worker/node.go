@@ -2,11 +2,11 @@ package worker
 
 import (
 	"context"
-	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 	"github.com/oars-sigs/oars-cloud/pkg/worker/metrics"
+	"github.com/sirupsen/logrus"
 )
 
 func (d *daemon) initNode() error {
@@ -44,9 +44,9 @@ func (d *daemon) initNode() error {
 	return err
 }
 
-func (d *daemon) addEvent(r core.Resource, kind, msg string) {
-	d.delEvent(r, kind)
-	event := d.convEvent(d.resourceName(r), kind, msg)
+func (d *daemon) addEvent(r core.Resource, action, status, msg string) {
+	d.delEvent(r, action, status)
+	event := d.convEvent(d.resourceName(r), action, status, msg)
 	_, err := d.eventstore.Put(context.Background(), event, &core.PutOptions{})
 	if err != nil {
 		logrus.Error(err)
@@ -54,7 +54,7 @@ func (d *daemon) addEvent(r core.Resource, kind, msg string) {
 }
 
 func (d *daemon) delEvent(r core.Resource, kind string) {
-	event := d.convEvent(d.resourceName(r), kind, "")
+	event := d.convEvent(d.resourceName(r), action, status, "")
 	err := d.eventstore.Delete(context.Background(), event, &core.DeleteOptions{})
 	if err != nil {
 		logrus.Error(err)

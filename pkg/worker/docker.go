@@ -17,12 +17,10 @@ import (
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-connections/nat"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/oars-sigs/oars-cloud/core"
 )
 
-func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) error {
+func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string, error) {
 	mounts := make([]mount.Mount, 0)
 	for _, v := range svc.Volumes {
 		ms := strings.Split(v, ":")
@@ -39,13 +37,13 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) error {
 	for k, v := range svc.ConfigMap {
 		edp := d.getEndpointByContainerName(svc.Name)
 		cfgPath := d.node.WorkDir + "/configmap/" + edp.Namespace + "/" + edp.Service + "/" + strings.TrimPrefix(k, "/")
-		err := os.MkdirAll(filepath.Dir(cfgPath), 0755)
+		err := os.MkdirAll(filepath.Dir(cfgPath), 0777)
 		if err != nil {
-			return err
+			return "", err
 		}
 		err = ioutil.WriteFile(cfgPath, []byte(v), 0644)
 		if err != nil {
-			return err
+			return "", err
 		}
 		mounts = append(mounts, mount.Mount{
 			Target: k,
@@ -59,7 +57,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) error {
 	if svc.Port.ContainerPort == 0 {
 		port, err := getFreePort()
 		if err != nil {
-			return err
+			return "", err
 		}
 		svc.Port.ContainerPort = port
 	}
@@ -171,25 +169,21 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) error {
 			}
 			fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{})
 			if err != nil {
-				return err
+				return "", err
 			}
 			defer fs.Close()
 			_, err = d.c.ImageLoad(ctx, fs, false)
 			if err != nil {
-				return err
+				return "", err
 			}
 		}
 	}
 
 	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)
-	go func() {
-		err = d.Start(ctx, ct.ID)
-		if err != nil {
-			logrus.Error(err)
-		}
-	}()
-
-	return err
+	if err != nil {
+		return "", err
+	}
+	return ct.ID, err
 }
 
 func (d *daemon) ImageList(ctx context.Context) error {
