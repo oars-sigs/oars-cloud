@@ -3,6 +3,7 @@
 package worker
 
 import (
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -277,4 +278,61 @@ func parsePort(portStr string) (string, int, int, error) {
 		return protocol, svcPort, targetPort, e.ErrInvalidPortFormat
 	}
 	return protocol, svcPort, targetPort, nil
+}
+
+func reconcileRouters(link string, cidrs []string) (err error) {
+	nic, err := netlink.LinkByName(link)
+	if err != nil {
+		return
+	}
+	existRoutes, err := netlink.RouteList(nic, netlink.FAMILY_V4)
+	if err != nil {
+		return
+	}
+
+	for _, route := range existRoutes {
+		if route.Scope == netlink.SCOPE_LINK {
+			continue
+		}
+
+		found := false
+		for _, c := range cidrs {
+			if route.Dst.String() == c {
+				found = true
+				break
+			}
+		}
+		if !found {
+			toDel = append(toDel, route.Dst.String())
+		}
+	}
+
+	for _, c := range cidrs {
+		found := false
+		for _, r := range existRoutes {
+			if r.Dst.String() == c {
+				found = true
+				break
+			}
+		}
+		if !found {
+			toAdd = append(toAdd, c)
+		}
+	}
+	for _, r := range toDel {
+		_, cidr, _ := net.ParseCIDR(r)
+		if err = netlink.RouteDel(&netlink.Route{Dst: cidr}); err != nil {
+			logrus.Error("failed to del route %v", err)
+		}
+	}
+
+	for _, r := range toAdd {
+		_, cidr, _ := net.ParseCIDR(r)
+		gw := net.ParseIP(gateway)
+		if err = netlink.RouteReplace(&netlink.Route{Dst: cidr, LinkIndex: nic.Attrs().Index, Scope: netlink.SCOPE_UNIVERSE, Gw: gw}); err != nil {
+			logrus.Error("failed to add route %v", err)
+		}
+	}
+
+	return
 }

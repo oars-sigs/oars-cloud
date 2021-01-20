@@ -8,8 +8,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	"github.com/oars-sigs/oars-cloud/core"
+
+	"github.com/docker/docker/api/types"
 )
 
 func getFreePort() (int, error) {
@@ -109,4 +110,20 @@ func (d *daemon) convEvent(r core.Resource, action, status, message string) *cor
 	}
 	event.GenName(r)
 	return event
+}
+
+func (d *daemon) getInterface() string {
+	if d.node.Interface != "" {
+		return d.node.Interface
+	}
+	infs, _ := net.Interfaces()
+	for _, inf := range infs {
+		addrs, _ := inf.Addrs()
+		for _, addr := range addrs {
+			if addr.String() == d.node.IP {
+				return inf.Name
+			}
+		}
+	}
+	return ""
 }

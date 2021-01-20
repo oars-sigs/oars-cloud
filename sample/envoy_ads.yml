@@ -2,6 +2,9 @@ image: "envoyproxy/envoy:v1.16.1"
 command: 
   - "-c"
   - "/etc/envoy/config.yaml"
+environment: 
+  - "ENVOY_UID=0"
+network_mode: "host"
 configmap: 
   /etc/envoy/config.yaml: |
     admin:
@@ -29,7 +32,11 @@ configmap:
       id: oars_ingress
     static_resources:
       clusters:
-      - connect_timeout: 1s
+      - name: xds_cluster
+        connect_timeout: 1s
+        type: STATIC
+        lb_policy: ROUND_ROBIN
+        http2_protocol_options: {}
         load_assignment:
           cluster_name: xds_cluster
           endpoints:
@@ -39,5 +46,3 @@ configmap:
                   socket_address:
                     address: 192.168.1.120
                     port_value: 8804
-        http2_protocol_options: {}
-        name: xds_cluster

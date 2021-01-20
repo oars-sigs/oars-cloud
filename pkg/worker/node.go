@@ -2,10 +2,12 @@ package worker
 
 import (
 	"context"
+	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 	"github.com/oars-sigs/oars-cloud/pkg/worker/metrics"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,8 +30,9 @@ func (d *daemon) initNode() error {
 			NodeInfo: nodeInfo,
 			State:    "running",
 			Node: core.Node{
-				Hostname: d.node.Hostname,
-				IP:       d.node.IP,
+				Hostname:      d.node.Hostname,
+				IP:            d.node.IP,
+				ContainerCIDR: d.node.ContainerCIDR,
 			},
 		},
 	}
@@ -41,7 +44,40 @@ func (d *daemon) initNode() error {
 		IsRegister: true,
 	}
 	_, err = resStore.NewRegister(d.store, endpoint, 10)
+	if err != nil {
+		return err
+	}
+	if d.node.ContainerCIDR != "" {
+		d.node.Interface = d.getInterface()
+		//config network
+		go d.configNetwork()
+	}
 	return err
+}
+
+func (d *daemon) configNetwork() {
+	t := time.NewTicker(time.Second * 30)
+	for {
+		select {
+		case <-t.C:
+			ress, ok := d.edpLister.List()
+			if !ok {
+				return
+			}
+			cidrs := make([]string, 0)
+			for _, res := range ress {
+				edp := res.(*core.Endpoint)
+				if edp.Service == "node" && edp.Namespace == "system" &&
+					edp.Name != d.node.Hostname && edp.Status.Node.ContainerCIDR != "" {
+					cidrs = append(cidrs, edp.Status.Node.ContainerCIDR)
+				}
+			}
+			err := reconcileRouters(d.node.Interface, cidrs)
+			if err != nil {
+				logrus.Error(err)
+			}
+		}
+	}
 }
 
 func (d *daemon) addEvent(r core.Resource, action, status, msg string) {

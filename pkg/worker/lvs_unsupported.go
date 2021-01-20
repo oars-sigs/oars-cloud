@@ -9,3 +9,7 @@ import (
 func startLVS(svcLister, edpLister core.ResourceLister) error {
 	return nil
 }
+
+func reconcileRouters(nic string, cidrs []string) error {
+	return nil
+}

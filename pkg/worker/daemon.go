@@ -21,7 +21,7 @@ type daemon struct {
 	mu            *sync.Mutex
 	endpointCache map[string]*core.Endpoint //current node endpoints
 	svcCache      sync.Map                  //current node services
-	node          core.NodeConfig
+	node          *core.NodeConfig
 	ready         bool
 }
 
@@ -36,7 +36,7 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 	d := &daemon{
 		c:             cli,
 		store:         store,
-		node:          node,
+		node:          &node,
 		mu:            new(sync.Mutex),
 		endpointCache: make(map[string]*core.Endpoint),
 		edpstore:      edpstore,

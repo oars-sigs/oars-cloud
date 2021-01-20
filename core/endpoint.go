@@ -6,8 +6,9 @@ import (
 
 //Node 节点
 type Node struct {
-	Hostname string `json:"hostname"`
-	IP       string `json:"ip"`
+	Hostname      string `json:"hostname"`
+	IP            string `json:"ip"`
+	ContainerCIDR string `json:"container_cidr"`
 }
 
 //Endpoint 端点
