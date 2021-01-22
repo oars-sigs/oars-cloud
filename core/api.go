@@ -48,6 +48,8 @@ const (
 	ServiceInvalidParameterCode
 	//ServiceMethodNotFoundCode 方法不存在
 	ServiceMethodNotFoundCode
+	//ServiceResourceNotFoundCode 资源不存在
+	ServiceResourceNotFoundCode
 )
 
 //GetErrorCodes 获取状态码表

@@ -79,8 +79,10 @@ func (s *service) Call(ctx context.Context, resource, action string, args interf
 		r = s.regIngressRoute(ctx, action, args)
 	case "event":
 		r = s.regEvent(ctx, action, args)
+	case "util":
+		r = s.regUtil(ctx, action, args)
 	default:
-		r = e.MethodNotFoundMethod()
+		r = e.ResourceNotFoundError()
 	}
 	if reply != nil {
 		*reply = *r

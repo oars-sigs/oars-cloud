@@ -35,12 +35,22 @@ func InternalError(err ...error) *core.APIReply {
 	}
 }
 
-//MethodNotFoundError 内部错误
+//MethodNotFoundError 方法不存在错误
 func MethodNotFoundError(err ...error) *core.APIReply {
 	return &core.APIReply{
 		Code:    core.ServiceMethodNotFoundCode,
 		Msg:     "方法不存在",
 		SubCode: "method-not-found",
+		SubMsg:  getErr(err...),
+	}
+}
+
+//ResourceNotFoundError 资源不存在错误
+func ResourceNotFoundError(err ...error) *core.APIReply {
+	return &core.APIReply{
+		Code:    core.ServiceResourceNotFoundCode,
+		Msg:     "资源不存在",
+		SubCode: "resource-not-found",
 		SubMsg:  getErr(err...),
 	}
 }

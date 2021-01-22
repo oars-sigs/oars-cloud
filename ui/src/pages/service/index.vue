@@ -184,7 +184,7 @@
 <script>
 import Editor from "vue2-ace-editor";
 import yaml from "js-yaml";
-import YAML  from "json2yaml";
+//import YAML  from "json2yaml";
 export default {
   components: {
     Editor,
@@ -283,6 +283,12 @@ export default {
         this.overlay = false;
       });
     },
+    toYaml: function(args){
+      let _that = this;
+      this.$call("system.admin.util.yamlFormat", args).then((resp) => {
+        _that.svcYaml=resp.data;
+      });
+    },
     doAction: function () {
       let _that = this;
      
@@ -331,7 +337,8 @@ export default {
           _that.actionParam.args.endpoints.forEach(function(item){
             _that.selectNodes.push(item.hostname)
           })
-         _that.svcYaml=YAML.stringify(_that.actionParam.args[_that.actionParam.args.kind])
+          _that.toYaml(_that.actionParam.args[_that.actionParam.args.kind])
+         //_that.svcYaml=YAML.stringify(_that.actionParam.args[_that.actionParam.args.kind])
       }
     },
   },
