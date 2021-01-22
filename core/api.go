@@ -50,6 +50,8 @@ const (
 	ServiceMethodNotFoundCode
 	//ServiceResourceNotFoundCode 资源不存在
 	ServiceResourceNotFoundCode
+	//ServiceResourceHadExisted 资源已存在
+	ServiceResourceHadExisted
 )
 
 //GetErrorCodes 获取状态码表

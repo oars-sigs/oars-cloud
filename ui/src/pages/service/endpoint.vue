@@ -81,7 +81,7 @@
         </tbody>
       </template>
     </v-simple-table>
-    <v-overlay :value="overlay">
+    <v-overlay :absolute="true" :value="overlay">
       <v-progress-circular indeterminate size="64"></v-progress-circular>
     </v-overlay>
     <!-- 日志 -->

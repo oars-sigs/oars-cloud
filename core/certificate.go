@@ -12,6 +12,7 @@ type Certificate struct {
 	Info   *CertInformation `json:"info,omitempty"`
 	Cert   string           `json:"cert"`
 	Key    string           `json:"key"`
+	P12    string           `json:"p12"`
 }
 
 //CertInformation cert info
@@ -23,12 +24,13 @@ type CertInformation struct {
 	Province           []string  `json:"province,omitempty"`
 	Locality           []string  `json:"locality,omitempty"`
 	CommonName         string    `json:"commonName,omitempty"`
-	IsCA               bool      `json:"isCA,omitempty"`
+	IsCA               bool      `json:"isCA"`
 	IPAddresses        []string  `json:"ipAddresses,omitempty"`
 	Domains            []string  `json:"domains,omitempty"`
 	Expires            int       `json:"expires,omitempty"`
 	NotBefore          time.Time `json:"notBefore,omitempty"`
 	NotAfter           time.Time `json:"notAfter,omitempty"`
+	Password           string    `json:"password,omitempty"` //暂未实现加密证书
 }
 
 //String ...

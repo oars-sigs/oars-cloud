@@ -35,6 +35,7 @@ require (
 	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb
 	google.golang.org/grpc v1.27.0
 	gotest.tools v2.2.0+incompatible // indirect
+	software.sslmate.com/src/go-pkcs12 v0.0.0-20201103104416-57fc603b7f52
 )
 
 replace (

@@ -9,29 +9,29 @@
     </v-breadcrumbs>
 
     <v-row>
-      <v-col cols="8"></v-col>
-      <v-col cols="2">
-        <v-select
-          :items="namespaces"
-          v-model="actionParam.args.namespace"
-          @change="
-            actionParam.key = 'list';
-            doAction();
-          "
-          label="命名空间"
-          dense
-        ></v-select>
-      </v-col>
+      <v-col cols="10"></v-col>
       <v-col cols="2" align="right">
         <v-dialog v-model="dialog" persistent max-width="600px">
           <template v-slot:activator="{ on, attrs }">
-            <v-btn color="primary" dark v-bind="attrs" @click="actionTitle='创建';update=false;svcYaml='';selectNodes=[]" text v-on="on">
+            <v-btn
+              color="primary"
+              dark
+              v-bind="attrs"
+              @click="
+                actionTitle = '创建';
+                update = false;
+                svcYaml = '';
+                selectNodes = [];
+              "
+              text
+              v-on="on"
+            >
               <v-icon left>mdi-plus</v-icon> 创建
             </v-btn>
           </template>
           <v-card>
             <v-card-title>
-              <span>{{ actionTitle }}服务</span>
+              <span>{{ actionTitle }}证书</span>
             </v-card-title>
             <v-card-text>
               <v-container>
@@ -45,32 +45,10 @@
                       :disabled="update"
                     ></v-text-field>
                   </v-col>
-                  <!-- <v-col cols="12">
-                    <v-select
-                      :items="kinds"
-                      v-model="actionParam.args.kind"
-                      @change="
-                        actionParam.key = 'list';
-                        doAction();
-                      "
-                      label="类型"
-                      dense
-                      :disabled="update"
-                    ></v-select>
-                  </v-col> -->
-                  <v-col cols="12">
-                    <v-select
-                      :items="nodes"
-                      v-model="selectNodes"
-                      label="端点"
-                      dense
-                      multiple
-                    ></v-select>
-                  </v-col>
                   <v-col cols="12">
                     <Editor
                       class="editor"
-                      v-model="svcYaml"
+                      v-model="certYaml"
                       @init="editorInit"
                       lang="yaml"
                       theme="chrome"
@@ -110,12 +88,20 @@
         <thead>
           <tr>
             <th class="text-left">名称</th>
+            <th class="text-left">是否是CA</th>
+            <th class="text-left">IP 地址</th>
+            <th class="text-left">域名</th>
+            <th class="text-left">过期日期</th>
             <th class="text-right">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in services" :key="item.name">
+          <tr v-for="item in certs" :key="item.name">
             <td>{{ item.name }}</td>
+            <td>{{ item.info.isCA }}</td>
+            <td>{{ item.info.ipAddresses }}</td>
+            <td>{{ item.info.domains }}</td>
+            <td>{{ item.info.notAfter | formatStrT }}</td>
             <td class="text-right">
               <v-menu bottom :offset-x="true" :offset-y="true">
                 <template v-slot:activator="{ on, attrs }">
@@ -150,9 +136,7 @@
     <v-dialog v-model="delDialog" persistent max-width="290">
       <v-card>
         <v-card-title></v-card-title>
-        <v-card-text
-          >确定删除服务‘{{ actionParam.args.name }}’?</v-card-text
-        >
+        <v-card-text>确定删除‘{{ actionParam.args.name }}’?</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
@@ -184,7 +168,8 @@
 <script>
 import Editor from "vue2-ace-editor";
 import yaml from "js-yaml";
-//import YAML  from "json2yaml";
+import YAML from "json2yaml";
+import { formatDate } from "../../utils/formatDate.js";
 export default {
   components: {
     Editor,
@@ -194,7 +179,7 @@ export default {
       dialog: false,
       delDialog: false,
       overlay: false,
-      actionTitle:"管理",
+      actionTitle: "管理",
       update: false,
       navs: [
         {
@@ -202,18 +187,10 @@ export default {
           href: "/",
         },
         {
-          text: "服务管理",
+          text: "证书管理",
         },
       ],
-      services: [],
-      namespaces: [],
-      namespace: "",
       actions: [
-        {
-          title: "编辑",
-          icon: "mdi-square-edit-outline",
-          key: "edit",
-        },
         {
           title: "删除",
           icon: "mdi-trash-can-outline",
@@ -221,124 +198,92 @@ export default {
           key: "confirmDelete",
         },
       ],
+      certs: [],
       actionParam: {
         args: {},
       },
-      svcYaml: "",
-      kinds:["docker"],
-      nodes: [],
-      selectNodes:[],
+      certYaml: "",
     };
   },
   created() {
     this.initActionParam();
     this.overlay = true;
-    this.listNamespace();
-    this.listNode();
+    this.list();
+  },
+  filters: {
+    formatStrT(time) {
+      if (time){
+        let date = new Date(time);
+        return formatDate(date, "yyyy-MM-dd hh:mm:ss");
+      }
+      return "--";
+    },
   },
   methods: {
     initActionParam: function () {
-      let namespace = this.actionParam.args.namespace;
       this.actionParam = {
-        args: {
-          namespace: namespace,
-        },
+        args: {},
       };
+      this.certYaml=""
     },
     editorInit: function () {
       require("brace/ext/language_tools");
       require("brace/theme/chrome");
       require("brace/mode/yaml");
     },
-    listNamespace: function () {
-      let _that = this;
-      this.$call("system.admin.namespace.get").then((resp) => {
-        let ns = new Array();
-        resp.data.forEach((element) => {
-          ns.push(element.name);
-        });
-        _that.namespaces = ns;
-        if (!_that.$store.state.currentNamespace){
-           _that.$store.commit('SetCurrentNamespace',ns[0]);
-        }
-        _that.actionParam.args.namespace = _that.$store.state.currentNamespace;
-        _that.list();
-      });
-    },
-    listNode: function () {
-      let _that = this;
-      this.$call("system.admin.endpoint.get",{namespace:"system",service:"node"}).then((resp) => {
-        resp.data.forEach((element) => {
-          _that.nodes.push(element.name);
-        });
-        this.overlay = false;
-      });
-    },
     list: function () {
       let _that = this;
-      this.$call("system.admin.service.get", {
-        namespace: this.actionParam.args.namespace,
-      }).then((resp) => {
-        _that.services = resp.data;
+      this.$call("system.admin.cert.get", {}).then((resp) => {
+        _that.certs = resp.data;
         this.overlay = false;
-      });
-    },
-    toYaml: function(args){
-      let _that = this;
-      this.$call("system.admin.util.yamlFormat", args).then((resp) => {
-        _that.svcYaml=resp.data;
       });
     },
     doAction: function () {
       let _that = this;
-     
+
       switch (this.actionParam.key) {
-        case "list":
-          _that.$store.commit('SetCurrentNamespace',_that.actionParam.args.namespace);
+        case "list": {
           this.overlay = true;
           _that.list();
           break;
-        case "confirmDelete":
+        }
+
+        case "confirmDelete": {
           _that.delDialog = true;
           break;
-        case "delete":
+        }
+
+        case "delete": {
           this.overlay = true;
           _that.delDialog = false;
-          this.$call("system.admin.service.delete", this.actionParam.args).then(
-            () => {
-              _that.list();
-            }
-          );
+          this.$call(
+            "system.admin.cert.delete",
+            this.actionParam.args
+          ).then(() => {
+            _that.list();
+          });
           _that.initActionParam();
           break;
-        case "create":
+        }
+
+        case "create": {
           this.overlay = true;
-          var content=yaml.safeLoad(_that.svcYaml)
-          this.actionParam.args.kind="docker"
-          this.actionParam.args[_that.actionParam.args.kind]= content;
-          _that.actionParam.args.endpoints=new Array();
-          _that.selectNodes.forEach(function(item){
-            if (item)
-            _that.actionParam.args.endpoints.push({hostname: item});
-          })
-          this.$call("system.admin.service.put", this.actionParam.args).then(
-            () => {
-              _that.initActionParam();
-              _that.dialog = false;
-              _that.list();
-            }
-          );
+          let args = yaml.safeLoad(_that.certYaml);
+          args.name = this.actionParam.args.name;
+          this.$call("system.admin.cert.put", args).then(() => {
+            _that.initActionParam();
+            _that.dialog = false;
+            _that.list();
+          }); 
           break;
-        case "edit":
-          _that.actionTitle="更新";
-          _that.dialog=true;
-          _that.update=true;
-          _that.selectNodes=new Array();
-          _that.actionParam.args.endpoints.forEach(function(item){
-            _that.selectNodes.push(item.hostname)
-          })
-          _that.toYaml(_that.actionParam.args[_that.actionParam.args.kind])
-         //_that.svcYaml=YAML.stringify(_that.actionParam.args[_that.actionParam.args.kind])
+        }
+
+        case "edit": {
+          _that.actionTitle = "更新";
+          _that.dialog = true;
+          _that.update = true;
+          _that.certYaml = YAML.stringify(_that.actionParam.args);
+        }
       }
     },
   },

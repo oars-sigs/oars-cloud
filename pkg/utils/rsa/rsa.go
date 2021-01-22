@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"math/big"
 	rd "math/rand"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
+
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 func init() {
@@ -113,6 +116,8 @@ func newCertificate(info *core.CertInformation) *x509.Certificate {
 	for _, domain := range info.Domains {
 		cert.DNSNames = append(cert.DNSNames, domain)
 	}
+	info.NotBefore = cert.NotBefore
+	info.NotAfter = cert.NotAfter
 	return cert
 }
 
@@ -136,4 +141,25 @@ func ParseCertToInfo(cert *x509.Certificate) *core.CertInformation {
 		Domains:            cert.DNSNames,
 		IsCA:               cert.IsCA,
 	}
+}
+
+//CertToP12 ...
+func CertToP12(certBuf, keyBuf []byte, certPwd string) (p12Cert string, err error) {
+	caBlock, _ := pem.Decode(certBuf)
+	crt, err := x509.ParseCertificate(caBlock.Bytes)
+	if err != nil {
+		return
+	}
+
+	keyBlock, _ := pem.Decode(keyBuf)
+	priKey, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return
+	}
+
+	pfx, err := pkcs12.Encode(rand.Reader, priKey, crt, nil, certPwd)
+	if err != nil {
+		return
+	}
+	return base64.StdEncoding.EncodeToString(pfx), err
 }

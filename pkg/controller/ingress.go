@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -158,8 +157,8 @@ func (c *ingressController) updateHandle() {
 	for k := range clustersMap {
 		clusters = append(clusters, clustersMap[k])
 	}
-	dd, _ := json.Marshal(listeners)
-	fmt.Println(string(dd))
+	//dd, _ := json.Marshal(listeners)
+	//fmt.Println(string(dd))
 	snap := cachev3.NewSnapshot(
 		fmt.Sprintf("v.%d", c.version),
 		[]types.Resource{}, //endpoints

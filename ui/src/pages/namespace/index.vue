@@ -133,7 +133,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-overlay :value="overlay">
+    <v-overlay :absolute="true" :value="overlay">
       <v-progress-circular indeterminate size="64"></v-progress-circular>
     </v-overlay>
   </v-container>

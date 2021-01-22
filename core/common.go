@@ -7,6 +7,10 @@ const (
 	HashLabelKey = "oars.hashwing.cn/hash"
 	//ServicePortLabelKey ...
 	ServicePortLabelKey = "oars.hashwing.cn/port"
+	//DefaultRootCertName ...
+	DefaultRootCertName = "default-root-cert"
+	//DefaultServerCertName ...
+	DefaultServerCertName = "default-server-cert"
 )
 
 //network
