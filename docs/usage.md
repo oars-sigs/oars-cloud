@@ -120,6 +120,12 @@ rules:
         servicePort: 8801
 ```
 
+- host: 为访问域名，可以留空，使用主机ip 访问
+
+- backend.serviceName 服务名，所关联的服务名称 
+
+- backend.servicePort 服务端口，所关联的服务端口
+
 就可以通过 `https://admin.oars.gzsunrun.cn` 访问服务了
 
 tcp 示例
@@ -131,6 +137,10 @@ rules:
       serviceName: "admin"
       servicePort: 8801
 ```
+
+注意：
+
+一个端口只能设置`一条tcp路由`或`多条http路由`
 
 ## 配置
 
