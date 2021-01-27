@@ -18,7 +18,6 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect function, called on by Prometheus Client library
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	logrus.Info("Metric collection requested")
 	go e.setNodeMetrics(ch)
 
 	metrics, err := e.asyncRetrieveMetrics()
@@ -35,8 +34,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, b := range metrics {
 		e.setPrometheusMetrics(b, ch)
 	}
-
-	logrus.Info("Metric collection completed")
 
 }
 
@@ -59,10 +56,6 @@ func (e *Exporter) setPrometheusMetrics(stats *ContainerMetrics, ch chan<- prome
 	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryUsageBytes"], prometheus.GaugeValue, float64(stats.MemoryStats.Usage), labels...)
 	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryCacheBytes"], prometheus.GaugeValue, float64(stats.MemoryStats.Stats.Cache), labels...)
 	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryLimit"], prometheus.GaugeValue, float64(stats.MemoryStats.Limit), labels...)
-
-	if len(stats.NetIntefaces) == 0 {
-		logrus.Infof("No network interfaces detected for container %s", stats.Name)
-	}
 
 	// Network interface stats (loop through the map of returned interfaces)
 	for key, net := range stats.NetIntefaces {

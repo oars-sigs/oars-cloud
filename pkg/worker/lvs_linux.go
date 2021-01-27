@@ -11,8 +11,9 @@ import (
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 	"github.com/oars-sigs/oars-cloud/pkg/ipvs"
-	"github.com/sirupsen/logrus"
+	"github.com/oars-sigs/oars-cloud/pkg/utils/netutils"
 
+	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
 
@@ -289,6 +290,8 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 	if err != nil {
 		return
 	}
+	toDel := make([]string, 0)
+	toAdd := make([]string, 0)
 
 	for _, route := range existRoutes {
 		if route.Scope == netlink.SCOPE_LINK {
@@ -328,6 +331,7 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 
 	for _, r := range toAdd {
 		_, cidr, _ := net.ParseCIDR(r)
+		gateway, _ := netutils.FirstSubnetIP(r)
 		gw := net.ParseIP(gateway)
 		if err = netlink.RouteReplace(&netlink.Route{Dst: cidr, LinkIndex: nic.Attrs().Index, Scope: netlink.SCOPE_UNIVERSE, Gw: gw}); err != nil {
 			logrus.Error("failed to add route %v", err)
