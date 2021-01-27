@@ -168,7 +168,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 			if err != nil {
 				return "", err
 			}
-			fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{})
+			fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{RegistryAuth: svc.ImagePullAuth})
 			if err != nil {
 				return "", err
 			}
