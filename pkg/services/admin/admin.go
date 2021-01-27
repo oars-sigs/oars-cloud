@@ -17,6 +17,7 @@ type service struct {
 	ingressListenerStore core.ResourceStore
 	eventStore           core.ResourceStore
 	certStore            core.ResourceStore
+	cfgStore             core.ResourceStore
 }
 
 //New admin api
@@ -30,6 +31,7 @@ func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
 		ingressListenerStore: resources.NewStore(store, new(core.IngressListener)),
 		eventStore:           resources.NewStore(store, new(core.Event)),
 		certStore:            resources.NewStore(store, new(core.Certificate)),
+		cfgStore:             resources.NewStore(store, new(core.ConfigMap)),
 	}
 	s.PutNamespace(core.Namespace{
 		ResourceMeta: &core.ResourceMeta{
@@ -64,6 +66,7 @@ func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
 		},
 	}, &core.PutOptions{})
 	s.initCert()
+	s.initConfigMap()
 	return s
 }
 
@@ -86,6 +89,8 @@ func (s *service) Call(ctx context.Context, resource, action string, args interf
 		r = s.regUtil(ctx, action, args)
 	case "cert":
 		r = s.regCert(ctx, action, args)
+	case "configmap":
+		r = s.regConfigMap(ctx, action, args)
 	default:
 		r = e.ResourceNotFoundError()
 	}

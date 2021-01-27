@@ -8,6 +8,8 @@ type ContainerService struct {
 	Name            string                 `json:"-"`
 	Labels          map[string]string      `json:"labels"`
 	Image           string                 `json:"image,omitempty"`
+	ImagePullPolicy string                 `json:"imagePullPolicy,omitempty"`
+	ImagePullAuth   string                 `json:"imagePullAuth,omitempty"`
 	Volumes         []string               `json:"volumes,omitempty"`
 	DependsOn       []string               `json:"depends_on,omitempty"`
 	Environment     []string               `json:"environment,omitempty"`
@@ -30,7 +32,6 @@ type ContainerService struct {
 	Pid             string                 `json:"pid,omitempty"`
 	Privileged      bool                   `json:"privileged,omitempty"`
 	WorkingDir      string                 `json:"working_dir,omitempty"`
-	ImagePullPolicy string                 `json:"imagePullPolicy,omitempty"`
 	ConfigMap       map[string]string      `json:"configmap,omitempty"`
 	Ports           []string               `json:"ports,omitempty"`
 	Expose          []string               `json:"expose,omitempty"`

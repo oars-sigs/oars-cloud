@@ -2,11 +2,13 @@ package worker
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
+	"github.com/oars-sigs/oars-cloud/pkg/utils/strvars"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,6 +30,30 @@ func (d *daemon) run() {
 			d.syncDockerSvc()
 		}
 	}
+}
+
+func (d *daemon) cacheConfig() error {
+	interceptor := func(put bool, r, prer core.Resource) (core.Resource, bool, error) {
+		if put {
+			cfg := r.(*core.ConfigMap)
+			if cfg.Name == core.DefaultSystemName && cfg.Namespace == core.SystemNamespace {
+				systemCfg := new(core.SystemConfig)
+				err := strvars.Parse(cfg.Data, systemCfg)
+				if err != nil {
+					logrus.Error(err)
+					return nil, true, nil
+				}
+				d.sysConfig = systemCfg
+			}
+		}
+		return nil, true, nil
+	}
+	cfgLister, err := resStore.NewLister(d.store, new(core.ConfigMap), &core.ResourceEventHandle{Interceptor: interceptor})
+	if err != nil {
+		return err
+	}
+	d.cfgLister = cfgLister
+	return nil
 }
 
 func (d *daemon) cacheEndpoint() error {
@@ -303,6 +329,15 @@ func (d *daemon) syncDockerSvc() error {
 			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
 		}
 		d.addEvent(edp, core.CreateEventAction, core.InProgressEventStatus, "")
+		//registry auth
+		if svc.ImagePullAuth == "" && d.sysConfig != nil {
+			for _, registry := range d.sysConfig.ImageRegistry {
+				if strings.HasPrefix(svc.Image, registry.Address+"/") {
+					svc.ImagePullAuth = registryAuth(registry.Username, registry.Password)
+				}
+			}
+		}
+		//create
 		id, err := d.Create(ctx, svc)
 		if err != nil {
 			logrus.Error(err)
@@ -310,6 +345,7 @@ func (d *daemon) syncDockerSvc() error {
 			continue
 		}
 		d.addEvent(edp, core.CreateEventAction, core.SuccessEventStatus, "")
+		//start
 		go func() {
 			d.addEvent(edp, core.StartEventAction, core.InProgressEventStatus, "")
 			err = d.Start(ctx, id)

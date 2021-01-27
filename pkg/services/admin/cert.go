@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
@@ -33,34 +32,30 @@ func (s *service) initCert() {
 			IsCA:       true,
 		},
 	}
-	reply := s.PutCert(rootCert)
-	fmt.Println(reply)
+	_, err := s.certStore.Get(context.TODO(), rootCert, &core.GetOptions{})
+	if err == e.ErrResourceNotFound {
+		s.PutCert(rootCert)
+	}
 	defaultCert := &core.Certificate{
 		ResourceMeta: &core.ResourceMeta{
 			Name: core.DefaultServerCertName,
 		},
 		RootCA: core.DefaultRootCertName,
 		Info: &core.CertInformation{
-			CommonName:  "OarsCloudServer",
-			Expires:     100,
-			IPAddresses: []string{"127.0.0.1"},
-			Domains:     []string{"*.oars.hashwing.cn"},
+			CommonName: "OarsCloudServer",
+			Expires:    100,
 		},
 	}
-	s.PutCert(defaultCert)
+	_, err = s.certStore.Get(context.TODO(), defaultCert, &core.GetOptions{})
+	if err == e.ErrResourceNotFound {
+		s.PutCert(defaultCert)
+	}
 }
 
 func (s *service) PutCert(args interface{}) *core.APIReply {
 	var cert core.Certificate
 	err := unmarshalArgs(args, &cert)
 	if err != nil {
-		return e.InternalError(err)
-	}
-	newcert, err := s.certStore.Get(context.TODO(), &cert, &core.GetOptions{})
-	if err == nil {
-		return core.NewAPIReply(newcert)
-	}
-	if err != e.ErrResourceNotFound {
 		return e.InternalError(err)
 	}
 	if cert.Cert == "" {

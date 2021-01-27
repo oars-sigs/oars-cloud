@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -184,6 +185,33 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		return "", err
 	}
 	return ct.ID, err
+}
+
+func (d *daemon) ImagePull(ctx context.Context, image, username, password string) error {
+	distributionRef, err := reference.ParseNormalizedNamed(image)
+	if err != nil {
+		return err
+	}
+	opt := types.ImagePullOptions{}
+	if username != "" {
+		opt.RegistryAuth = base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+	}
+	fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+	defer fs.Close()
+	_, err = d.c.ImageLoad(ctx, fs, false)
+
+	return err
+
+}
+func (d *daemon) ImageRef(ctx context.Context, image string) (string, error) {
+	distributionRef, err := reference.ParseNormalizedNamed(image)
+	if err != nil {
+		return "", err
+	}
+	return distributionRef.String(), nil
 }
 
 func (d *daemon) ImageList(ctx context.Context) error {

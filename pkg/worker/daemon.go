@@ -16,12 +16,14 @@ type daemon struct {
 	svcLister     core.ResourceLister
 	edpLister     core.ResourceLister
 	nodeEdpLister core.ResourceLister
+	cfgLister     core.ResourceLister
 	edpstore      core.ResourceStore
 	eventstore    core.ResourceStore
 	mu            *sync.Mutex
 	endpointCache map[string]*core.Endpoint //current node endpoints
 	svcCache      sync.Map                  //current node services
 	node          *core.NodeConfig
+	sysConfig     *core.SystemConfig
 	ready         bool
 }
 
@@ -41,6 +43,10 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 		endpointCache: make(map[string]*core.Endpoint),
 		edpstore:      edpstore,
 		eventstore:    eventstore,
+	}
+	err = d.cacheConfig()
+	if err != nil {
+		return err
 	}
 	err = d.cacheEndpoint()
 	if err != nil {

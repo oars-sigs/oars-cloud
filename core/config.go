@@ -50,3 +50,15 @@ type NodeConfig struct {
 type IngressConfig struct {
 	XDSPort int `envconfig:"INGRESS_XDS_PORT" default:"8804"`
 }
+
+//SystemConfig 系统配置
+type SystemConfig struct {
+	ImageRegistry map[string]ImageRegistryConfig `json:"imageRegistry"`
+}
+
+//ImageRegistryConfig 镜像仓库配置
+type ImageRegistryConfig struct {
+	Address  string `json:"address"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}

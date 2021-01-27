@@ -2,6 +2,7 @@ package worker
 
 import (
 	"crypto/md5"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -126,4 +127,19 @@ func (d *daemon) getInterface() string {
 		}
 	}
 	return ""
+}
+
+// registryAuth returns the json marshaled, base64 encoded
+// credential string that can be passed to the docker
+// registry authentication header.
+func registryAuth(username, password string) string {
+	v := struct {
+		Username string `json:"username,omitempty"`
+		Password string `json:"password,omitempty"`
+	}{
+		Username: username,
+		Password: password,
+	}
+	buf, _ := json.Marshal(&v)
+	return base64.URLEncoding.EncodeToString(buf)
 }

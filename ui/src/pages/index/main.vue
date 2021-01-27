@@ -103,10 +103,9 @@ export default {
       },
       {
         action: "mdi-settings",
-        title: "设置",
+        title: "配置",
         items: [
-          { title: "系统设置", path: "/setting" },
-          { title: "额外设置", path: "" },
+          { title: "配置管理", path: "/setting" },
         ],
       },
     ],
