@@ -58,7 +58,7 @@ resource:
 
 - image: 容器镜像，xxx:tag
 
-- volumes: 挂载存储，目前仅支持本机存储，如果新建目录请挂载到/opt/worker/{namespace}/{service}/
+- volumes: 挂载存储，目前仅支持本机存储，`主机目录:容器目录`。如果主机目录为绝对路径直接使用该路径（不会自动创建目录），如果机目录为相对路径使用worker 目录下创建（默认/opt/oars/worker/volume/{namespace}/{service}/xxxx/xxxx ）
 
 - environment： 环境变量
 

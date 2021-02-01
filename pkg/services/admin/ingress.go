@@ -41,6 +41,9 @@ func (s *service) PutIngressListener(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
+	if !nameRegex.MatchString(listener.Name) {
+		return e.InvalidParameterError()
+	}
 	if len(listener.TLSCerts) == 0 {
 		ca := &certificate.CA{
 			Name:   listener.Name,
@@ -118,6 +121,9 @@ func (s *service) PutIngressRoute(args interface{}) *core.APIReply {
 	err := unmarshalArgs(args, &route)
 	if err != nil {
 		return e.InvalidParameterError(err)
+	}
+	if !nameRegex.MatchString(route.Name) {
+		return e.InvalidParameterError()
 	}
 	ctx := context.TODO()
 	_, err = s.ingressRouteStore.Put(ctx, &route, &core.PutOptions{})

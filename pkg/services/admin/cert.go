@@ -58,6 +58,9 @@ func (s *service) PutCert(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InternalError(err)
 	}
+	if !nameRegex.MatchString(cert.Name) {
+		return e.InvalidParameterError()
+	}
 	if cert.Cert == "" {
 		if cert.Info.IsCA {
 			crt, key, err := rsa.CreateCRT(nil, nil, cert.Info)

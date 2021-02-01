@@ -22,23 +22,27 @@ import (
 )
 
 func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string, error) {
+	edp := d.getEndpointByContainerName(svc.Name)
 	mounts := make([]mount.Mount, 0)
 	for _, v := range svc.Volumes {
 		ms := strings.Split(v, ":")
 		if len(ms) != 2 {
 			return "", errors.New("volumes format error")
 		}
-		os.MkdirAll(ms[0], 0755)
+		srcPath := ms[0]
+		if !filepath.IsAbs(srcPath) {
+			srcPath = fmt.Sprintf("%s/volume/%s/%s/%s", d.node.WorkDir, edp.Namespace, edp.Service, srcPath)
+		}
+		os.MkdirAll(srcPath, 0777)
 		mounts = append(mounts, mount.Mount{
 			Target: ms[1],
-			Source: ms[0],
+			Source: srcPath,
 			Type:   mount.Type("bind"),
 		})
 	}
 	for k, v := range svc.ConfigMap {
-		edp := d.getEndpointByContainerName(svc.Name)
 		cfgPath := d.node.WorkDir + "/configmap/" + edp.Namespace + "/" + edp.Service + "/" + strings.TrimPrefix(k, "/")
-		err := os.MkdirAll(filepath.Dir(cfgPath), 0777)
+		err := os.MkdirAll(filepath.Dir(cfgPath), 0755)
 		if err != nil {
 			return "", err
 		}
