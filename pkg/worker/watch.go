@@ -345,7 +345,7 @@ func (d *daemon) syncDockerSvc() error {
 			d.addEvent(edp, core.ImagePullEventAction, core.FailEventStatus, err.Error())
 			continue
 		}
-		d.addEvent(edp, core.ImagePullEventAction, core.SuccessEventStatus, err.Error())
+		d.addEvent(edp, core.ImagePullEventAction, core.SuccessEventStatus, "")
 
 		//create
 		d.addEvent(edp, core.CreateEventAction, core.InProgressEventStatus, "")
