@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -147,6 +146,14 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 	}
 
 	hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
+	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)
+	if err != nil {
+		return "", err
+	}
+	return ct.ID, err
+}
+
+func (d *daemon) ImagePull(ctx context.Context, svc *core.ContainerService) error {
 	if svc.ImagePullPolicy == "" {
 		svc.ImagePullPolicy = core.ImagePullIfNotPresent
 	}
@@ -155,7 +162,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		if svc.ImagePullPolicy == core.ImagePullIfNotPresent {
 			imgs, err := d.c.ImageList(ctx, types.ImageListOptions{})
 			if err != nil {
-				return "", err
+				return err
 			}
 			imgExist := false
 			for _, img := range imgs {
@@ -170,46 +177,22 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		if pullFlag {
 			distributionRef, err := reference.ParseNormalizedNamed(svc.Image)
 			if err != nil {
-				return "", err
+				return err
 			}
 			fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{RegistryAuth: svc.ImagePullAuth})
 			if err != nil {
-				return "", err
+				return err
 			}
 			defer fs.Close()
 			_, err = d.c.ImageLoad(ctx, fs, false)
 			if err != nil {
-				return "", err
+				return err
 			}
 		}
 	}
-
-	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)
-	if err != nil {
-		return "", err
-	}
-	return ct.ID, err
+	return nil
 }
 
-func (d *daemon) ImagePull(ctx context.Context, image, username, password string) error {
-	distributionRef, err := reference.ParseNormalizedNamed(image)
-	if err != nil {
-		return err
-	}
-	opt := types.ImagePullOptions{}
-	if username != "" {
-		opt.RegistryAuth = base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
-	}
-	fs, err := d.c.ImagePull(ctx, distributionRef.String(), types.ImagePullOptions{})
-	if err != nil {
-		return err
-	}
-	defer fs.Close()
-	_, err = d.c.ImageLoad(ctx, fs, false)
-
-	return err
-
-}
 func (d *daemon) ImageRef(ctx context.Context, image string) (string, error) {
 	distributionRef, err := reference.ParseNormalizedNamed(image)
 	if err != nil {

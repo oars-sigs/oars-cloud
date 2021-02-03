@@ -230,7 +230,7 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 		for _, ir := range irs {
 			for _, path := range ir.HTTP.Paths {
 				//generate one route in a host
-				clusterName := path.Backend.ServiceName + "_" + ir.namespace
+				clusterName := fmt.Sprintf("%s_%s_%d", path.Backend.ServiceName, ir.namespace, path.Backend.ServicePort)
 				r := &route.Route{
 					Match: &route.RouteMatch{
 						PathSpecifier: &route.RouteMatch_Prefix{

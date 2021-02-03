@@ -9,6 +9,7 @@ type Event struct {
 	Status  string `json:"status"`
 	From    string `json:"from"`
 	Message string `json:"message"`
+	Number  int64  `json:"number"`
 }
 
 const (
@@ -18,6 +19,8 @@ const (
 	DeleteEventAction = "delete"
 	//StartEventAction 启动事件操作
 	StartEventAction = "start"
+	//ImagePullEventAction 拉镜像事件操作
+	ImagePullEventAction = "imagePull"
 
 	//SuccessEventStatus 成功事件
 	SuccessEventStatus = "success"

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
 
@@ -108,6 +109,7 @@ func (d *daemon) convEvent(r core.Resource, action, status, message string) *cor
 		Status:  status,
 		From:    "worker-" + d.node.Hostname,
 		Message: message,
+		Number:  time.Now().UnixNano(),
 	}
 	event.GenName(r)
 	return event

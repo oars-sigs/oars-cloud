@@ -328,7 +328,7 @@ func (d *daemon) syncDockerSvc() error {
 			}
 			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
 		}
-		d.addEvent(edp, core.CreateEventAction, core.InProgressEventStatus, "")
+
 		//registry auth
 		if svc.ImagePullAuth == "" && d.sysConfig != nil {
 			for _, registry := range d.sysConfig.ImageRegistry {
@@ -337,7 +337,18 @@ func (d *daemon) syncDockerSvc() error {
 				}
 			}
 		}
+		//pull image
+		d.addEvent(edp, core.ImagePullEventAction, core.InProgressEventStatus, "")
+		err := d.ImagePull(ctx, svc)
+		if err != nil {
+			logrus.Error(err)
+			d.addEvent(edp, core.ImagePullEventAction, core.FailEventStatus, err.Error())
+			continue
+		}
+		d.addEvent(edp, core.ImagePullEventAction, core.SuccessEventStatus, err.Error())
+
 		//create
+		d.addEvent(edp, core.CreateEventAction, core.InProgressEventStatus, "")
 		id, err := d.Create(ctx, svc)
 		if err != nil {
 			logrus.Error(err)
