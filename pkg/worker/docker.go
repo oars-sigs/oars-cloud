@@ -145,7 +145,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		PortBindings: ports,
 	}
 
-	hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
+	//hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
 	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)
 	if err != nil {
 		return "", err
