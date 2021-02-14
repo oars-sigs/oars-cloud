@@ -72,8 +72,7 @@ func (c *certController) update() error {
 				log.Error(err)
 				continue
 			}
-		}
-		if cert.Cert != "" {
+		} else {
 			if cert.Info.NotAfter.After(time.Now().AddDate(0, 1, 0)) {
 				continue
 			}
