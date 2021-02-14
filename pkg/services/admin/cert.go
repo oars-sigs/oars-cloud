@@ -44,6 +44,7 @@ func (s *service) initCert() {
 		Info: &core.CertInformation{
 			CommonName: "OarsCloudServer",
 			Expires:    100,
+			Domains:    []string{"*"},
 		},
 	}
 	_, err = s.certStore.Get(context.TODO(), defaultCert, &core.GetOptions{})
