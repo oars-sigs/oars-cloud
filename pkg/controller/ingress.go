@@ -71,7 +71,7 @@ func (c *ingressController) run(stopCh <-chan struct{}) error {
 		return err
 	}
 	c.routeLister = routeLister
-	certLister, err := resStore.NewLister(c.store, &core.Certificate{}, &core.ResourceEventHandle{})
+	certLister, err := resStore.NewLister(c.store, &core.Certificate{}, handle)
 	if err != nil {
 		return err
 	}
