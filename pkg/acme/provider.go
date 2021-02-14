@@ -56,7 +56,7 @@ func setProvider(p string, c *lego.Client) error {
 func (c *Client) Create() (*core.Certificate, error) {
 	domain := c.cert.Info.Domains[0]
 	request := certificate.ObtainRequest{
-		Domains: []string{"*." + domain},
+		Domains: []string{domain},
 		Bundle:  true,
 	}
 	certificates, err := c.client.Certificate.Obtain(request)

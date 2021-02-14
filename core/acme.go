@@ -16,7 +16,7 @@ type AcmeConfig struct {
 
 // AcmeAccount  a user or account type that implements acme.User
 type AcmeAccount struct {
-	Email        string
+	Email        string `json:"email"`
 	Registration *registration.Resource
 	Key          []byte
 }

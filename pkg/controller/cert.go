@@ -45,31 +45,53 @@ func (c *certController) update() error {
 	resources, _ := c.certLister.List()
 	for _, resource := range resources {
 		cert := resource.(*core.Certificate)
-		if cert.Acme == nil {
-			return nil
+		if cert.Acme == nil || cert.Info == nil {
+			continue
 		}
 		if cert.Acme.Account.Registration == nil {
-			acme.NewAccount(cert.Acme.Account)
+			err := acme.NewAccount(cert.Acme.Account)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			_, err = c.certStore.Put(context.Background(), cert, &core.PutOptions{})
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
-		if cert.Info == nil {
+		if cert.Cert == "" {
+			log.Info("create cert", cert.Info.Domains[0])
 			cli, err := acme.New(cert)
 			if err != nil {
-				return err
+				log.Error(err)
+				continue
 			}
 			cert, err = cli.Create()
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
-		if cert.Info != nil {
-			if cert.Info.NotAfter.Before(time.Now().AddDate(0, 1, 0)) {
-				cli, err := acme.New(cert)
-				if err != nil {
-					return err
-				}
-				cert, err = cli.Renew()
+		if cert.Cert != "" {
+			if cert.Info.NotAfter.After(time.Now().AddDate(0, 1, 0)) {
+				continue
+			}
+			log.Info("renew cert", cert.Info.Domains[0])
+			cli, err := acme.New(cert)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			cert, err = cli.Renew()
+			if err != nil {
+				log.Error(err)
+				continue
 			}
 		}
 		_, err := c.certStore.Put(context.Background(), cert, &core.PutOptions{})
 		if err != nil {
-			return err
+			log.Error(err)
 		}
 	}
 	return nil
