@@ -3,6 +3,7 @@ package acme
 import (
 	"encoding/base64"
 	"errors"
+	"os"
 
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
@@ -24,6 +25,9 @@ func New(cert *core.Certificate) (*Client, error) {
 	client, err := lego.NewClient(config)
 	if err != nil {
 		return nil, err
+	}
+	for k, v := range cert.Acme.Env {
+		os.Setenv(k, v)
 	}
 	err = setProvider(cert.Acme.Provider, client)
 	if err != nil {
