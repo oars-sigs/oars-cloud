@@ -42,7 +42,7 @@ func CreateCRT(RootCa *x509.Certificate, RootKey *rsa.PrivateKey, info *core.Cer
 	crtB = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Headers: map[string]string{}, Bytes: crtB})
 
 	keyB = x509.MarshalPKCS1PrivateKey(Key)
-	keyB = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Headers: map[string]string{}, Bytes: keyB})
+	keyB = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Headers: map[string]string{}, Bytes: keyB})
 	return
 }
 

@@ -383,7 +383,7 @@ func (c *ingressController) getCert(host string, lis *core.IngressListener) ([]b
 	certRes, _ := c.certLister.List()
 	for i, tlsCert := range certRes {
 		cert := tlsCert.(*core.Certificate)
-		if cert.Info == nil || cert.Info.IsCA || len(cert.Info.Domains) == 0 {
+		if cert.Cert == "" || cert.Info.IsCA || len(cert.Info.Domains) == 0 {
 			continue
 		}
 		cerths := strings.Split(cert.Info.Domains[0], ".")
@@ -392,13 +392,18 @@ func (c *ingressController) getCert(host string, lis *core.IngressListener) ([]b
 			continue
 		}
 		curScore := 0
-		for n, ch := range cerths {
+		for n := len(cerths) - 1; n >= 0; n-- {
+			ch := cerths[n]
 			if hs[n] == ch {
 				curScore += 2
 				continue
 			}
 			if ch == "*" {
 				curScore++
+				break
+			}
+			if hs[n] != ch {
+				curScore = 0
 				break
 			}
 		}
