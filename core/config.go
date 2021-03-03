@@ -44,6 +44,7 @@ type NodeConfig struct {
 	WorkDir       string   `envconfig:"NODE_WORKDIR" default:"/opt/oars/woker"`
 	ContainerCIDR string   `envconfig:"NODE_CONTAINER_CIDR"`
 	Interface     string   `envconfig:"NODE_INTERFACE"`
+	Vault         VaultConfig
 }
 
 //IngressConfig ingress 配置
@@ -61,4 +62,10 @@ type ImageRegistryConfig struct {
 	Address  string `json:"address"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+//VaultConfig vault config
+type VaultConfig struct {
+	Address string `envconfig:"VAULT_ADDRESSS"`
+	TOKEN   string `envconfig:"VAULT_TOKEN"`
 }

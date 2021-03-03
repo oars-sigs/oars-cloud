@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
@@ -83,7 +84,7 @@ func (s *store) Put(ctx context.Context, arg core.Resource, opts *core.PutOption
 
 func (s *store) Delete(ctx context.Context, arg core.Resource, opts *core.DeleteOptions) error {
 	key := getKey(arg)
-	err := s.kvstore.Delete(ctx, key, core.KVOption{WithPrefix: true})
+	err := s.kvstore.Delete(ctx, key, core.KVOption{WithPrefix: strings.HasSuffix(key, "/")})
 	return err
 }
 

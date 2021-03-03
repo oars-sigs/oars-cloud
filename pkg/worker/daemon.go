@@ -25,6 +25,7 @@ type daemon struct {
 	node          *core.NodeConfig
 	sysConfig     *core.SystemConfig
 	ready         bool
+	vault         *VaultClient
 }
 
 //Start ...
@@ -43,6 +44,13 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 		endpointCache: make(map[string]*core.Endpoint),
 		edpstore:      edpstore,
 		eventstore:    eventstore,
+	}
+	if node.Vault.Address != "" {
+		c, err := newVault(node.Vault.Address, node.Vault.TOKEN)
+		if err != nil {
+			return err
+		}
+		d.vault = c
 	}
 	err = d.cacheConfig()
 	if err != nil {
