@@ -64,7 +64,7 @@ func unmarshalArgs(in, out interface{}) error {
 }
 
 const (
-	nameRegexString = `^[a-zA-Z]([a-zA-Z0-9\-]+)*[a-zA-Z0-9]$`
+	nameRegexString = `^[a-zA-Z]([a-zA-Z0-9\-]+)*[a-zA-Z0-9](@[a-zA-Z0-9\-]+)*$`
 )
 
 var (
