@@ -43,6 +43,10 @@ module.exports = {
 			'/api': {
 				target: 'http://127.0.0.1:8801',
 				changeOrigin: true,
+			},
+			'/proxy': {
+				target: 'http://127.0.0.1:8801',
+				changeOrigin: true,
 			}
 		  },
 	},

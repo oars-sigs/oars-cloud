@@ -134,14 +134,24 @@ func (d *daemon) parseContainerSvc(svc *core.Service) []*core.ContainerService {
 	if svc.Kind != "docker" {
 		return cSvcs
 	}
+	ename := ""
+	enames := strings.Split(svc.Name, "@")
+	if len(enames) > 1 {
+		svc.Name = enames[0]
+		ename = enames[1]
+	}
 	for _, ed := range svc.Endpoints {
 		if ed.Hostname != d.node.Hostname {
 			continue
 		}
 		if ed.Name == "" {
-			ed.Name = ed.Hostname
+			if ename != "" {
+				ed.Name = ename
+			} else {
+				ed.Name = ed.Hostname
+			}
 		}
-		ed.Domain = ed.Hostname + "." + svc.Name + "." + svc.Namespace
+		ed.Domain = ed.Name + "." + svc.Name + "." + svc.Namespace
 		vars := core.ServiceValues{
 			Node: core.Node{
 				Hostname: d.node.Hostname,

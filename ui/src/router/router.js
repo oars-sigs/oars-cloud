@@ -11,6 +11,7 @@ import Node from '@/pages/node/index'
 import Listener from '@/pages/ingress/listener'
 import Route from '@/pages/ingress/route'
 import Cert from '@/pages/ingress/cert'
+import Monitor from '@/pages/monitor/index'
 
 Vue.use(Router)
 
@@ -101,6 +102,14 @@ let router = new Router({
           component: Route,
           meta:{
             title: '路由配置'
+          }
+        },
+        {
+          path: '/monitor',
+          name: 'Monitor',
+          component: Monitor,
+          meta:{
+            title: '监控管理'
           }
         },
       ]

@@ -1,6 +1,6 @@
 # OarsCloud 使用说明
 
-OarsCloud 目前设计分为集群、服务、网关、配置四大模块，命名空间用于应用命名隔离，后续可用于权限管理。集群模块主要是集群概览、命名空间管理；服务模块用于服务管理；网关是作为入口管理（类k8s 的 ingress ）；配置用于配置管理（目前还不可用）
+OarsCloud 目前设计分为集群、服务、网关、配置四大模块，命名空间用于应用命名隔离，后续可用于权限管理。集群模块主要是集群概览、命名空间管理；服务模块用于服务管理；网关是作为入口管理（类k8s 的 ingress ）；配置用于配置管理
 
 
 ## 集群
@@ -142,9 +142,48 @@ rules:
 
 一个端口只能设置`一条tcp路由`或`多条http路由`
 
+### 证书管理
+
+- 添加自有证书
+
+```yaml
+caCert: LS0tQkVHSU4g...
+cert: LS0tLS1CRUdJTiBDRVJU...
+info:
+  commonName: "domain.com"
+  domains: ["domain.com"]
+  isCA: false
+```
+
+- 申请Lets Encrypt证书 
+
+```yaml
+acme:
+  provider: alidns
+  account: 
+    email: xxxx@xxx.cn
+  env:
+    ALICLOUD_ACCESS_KEY: < 阿里云 key >
+    ALICLOUD_SECRET_KEY: < 阿里云 secret >
+info:
+  commonName: "*.oars.xxx.cn"
+  domains:
+  - "*.oars.xxx.cn"
+
+```
+
+目前仅支持阿里云dns， 后面陆续支持更多
+
+
+## 监控
+
+监控需要配合安装Prometheus 和grafana
+
 ## 配置
 
-暂未开放
+目前仅用于系统配置
+
+
 
 
 
