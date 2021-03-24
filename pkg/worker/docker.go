@@ -144,7 +144,16 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		Sysctls:      svc.Sysctls,
 		PortBindings: ports,
 	}
-
+	if d.node.Loki.Enabled {
+		hostCfg.LogConfig = container.LogConfig{
+			Type: d.node.Loki.Drive,
+			Config: map[string]string{
+				"loki-url": d.node.Loki.URL,
+				"max-size": d.node.Loki.MaxSize,
+				"max-file": d.node.Loki.MaxFile,
+			},
+		}
+	}
 	//hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
 	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)
 	if err != nil {

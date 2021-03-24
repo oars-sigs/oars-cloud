@@ -45,6 +45,7 @@ type NodeConfig struct {
 	ContainerCIDR string   `envconfig:"NODE_CONTAINER_CIDR"`
 	Interface     string   `envconfig:"NODE_INTERFACE"`
 	Vault         VaultConfig
+	Loki          LokiConfig
 }
 
 //IngressConfig ingress 配置
@@ -68,4 +69,12 @@ type ImageRegistryConfig struct {
 type VaultConfig struct {
 	Address string `envconfig:"VAULT_ADDRESSS"`
 	TOKEN   string `envconfig:"VAULT_TOKEN"`
+}
+
+type LokiConfig struct {
+	Enabled bool   `envconfig:"LOKI_ENABLED"`
+	Drive   string `envconfig:"LOKI_PLUGIN_DRIVER" default:"loki"`
+	URL     string `envconfig:"LOKI_ADDRESS" default:"http://loki.system:3100/loki/api/v1/push"`
+	MaxSize string `envconfig:"LOKI_MAX_SIZE" default:"50m"`
+	MaxFile string `envconfig:"LOKI_MAX_FILE" default:"10"`
 }
