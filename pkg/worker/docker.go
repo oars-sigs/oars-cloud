@@ -145,14 +145,14 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		PortBindings: ports,
 	}
 	if d.node.Loki.Enabled {
-		labels := fmt.Sprintf("namespace=%s,service=%s,endpoint=%s", edp.Namespace, edp.Service, edp.Name)
+		labels := fmt.Sprintf("container_name={{.Name}},namespace=%s,service=%s,endpoint=%s", edp.Namespace, edp.Service, edp.Name)
 		hostCfg.LogConfig = container.LogConfig{
 			Type: d.node.Loki.Drive,
 			Config: map[string]string{
-				"loki-url":            d.node.Loki.URL,
-				"max-size":            d.node.Loki.MaxSize,
-				"max-file":            d.node.Loki.MaxFile,
-				"loki-external-label": labels,
+				"loki-url":             d.node.Loki.URL,
+				"max-size":             d.node.Loki.MaxSize,
+				"max-file":             d.node.Loki.MaxFile,
+				"loki-external-labels": labels,
 			},
 		}
 	}
