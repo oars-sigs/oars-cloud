@@ -11,7 +11,6 @@ import (
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 	"github.com/oars-sigs/oars-cloud/pkg/ipvs"
-	"github.com/oars-sigs/oars-cloud/pkg/utils/netutils"
 
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
@@ -281,7 +280,7 @@ func parsePort(portStr string) (string, int, int, error) {
 	return protocol, svcPort, targetPort, nil
 }
 
-func reconcileRouters(link string, cidrs []string) (err error) {
+func reconcileRouters(link string, nodes []core.Node) (err error) {
 	nic, err := netlink.LinkByName(link)
 	if err != nil {
 		return
@@ -291,7 +290,7 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 		return
 	}
 	toDel := make([]string, 0)
-	toAdd := make([]string, 0)
+	toAdd := make([]core.Node, 0)
 
 	for _, route := range existRoutes {
 		if route.Dst == nil {
@@ -302,8 +301,8 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 		}
 
 		found := false
-		for _, c := range cidrs {
-			if route.Dst.String() == c {
+		for _, node := range nodes {
+			if route.Dst.String() == node.ContainerCIDR {
 				found = true
 				break
 			}
@@ -313,19 +312,19 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 		}
 	}
 
-	for _, c := range cidrs {
+	for _, node := range nodes {
 		found := false
 		for _, r := range existRoutes {
 			if r.Dst == nil {
 				continue
 			}
-			if r.Dst.String() == c {
+			if r.Dst.String() == node.ContainerCIDR {
 				found = true
 				break
 			}
 		}
 		if !found {
-			toAdd = append(toAdd, c)
+			toAdd = append(toAdd, node)
 		}
 	}
 	for _, r := range toDel {
@@ -336,9 +335,8 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 	}
 
 	for _, r := range toAdd {
-		_, cidr, _ := net.ParseCIDR(r)
-		gateway, _ := netutils.FirstSubnetIP(r)
-		gw := net.ParseIP(gateway)
+		_, cidr, _ := net.ParseCIDR(r.IP)
+		gw := net.ParseIP(r.IP)
 		if err = netlink.RouteReplace(&netlink.Route{Dst: cidr, LinkIndex: nic.Attrs().Index, Scope: netlink.SCOPE_UNIVERSE, Gw: gw}); err != nil {
 			logrus.Error("failed to add route %v", err)
 		}

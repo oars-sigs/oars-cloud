@@ -62,14 +62,14 @@ func (d *daemon) configNetwork() {
 		case <-t.C:
 			ress, ok := d.edpLister.List()
 			if !ok {
-				return
+				continue
 			}
-			cidrs := make([]string, 0)
+			cidrs := make([]core.Node, 0)
 			for _, res := range ress {
 				edp := res.(*core.Endpoint)
 				if edp.Service == "node" && edp.Namespace == "system" &&
 					edp.Name != d.node.Hostname && edp.Status.Node.ContainerCIDR != "" {
-					cidrs = append(cidrs, edp.Status.Node.ContainerCIDR)
+					cidrs = append(cidrs, edp.Status.Node)
 				}
 			}
 			err := reconcileRouters(d.node.Interface, cidrs)
