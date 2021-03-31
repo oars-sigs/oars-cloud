@@ -316,7 +316,7 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 	for _, c := range cidrs {
 		found := false
 		for _, r := range existRoutes {
-			if route.Dst == nil {
+			if r.Dst == nil {
 				continue
 			}
 			if r.Dst.String() == c {
