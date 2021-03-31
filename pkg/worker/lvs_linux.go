@@ -294,6 +294,9 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 	toAdd := make([]string, 0)
 
 	for _, route := range existRoutes {
+		if route.Dst == nil {
+			continue
+		}
 		if route.Scope == netlink.SCOPE_LINK {
 			continue
 		}
@@ -313,6 +316,9 @@ func reconcileRouters(link string, cidrs []string) (err error) {
 	for _, c := range cidrs {
 		found := false
 		for _, r := range existRoutes {
+			if route.Dst == nil {
+				continue
+			}
 			if r.Dst.String() == c {
 				found = true
 				break
