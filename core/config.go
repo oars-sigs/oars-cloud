@@ -36,16 +36,17 @@ type EtcdConfig struct {
 
 //NodeConfig 节点配置
 type NodeConfig struct {
-	Hostname      string   `envconfig:"NODE_HOSTNAME"`
-	IP            string   `envconfig:"NODE_IP"`
-	Port          int      `envconfig:"NODE_PORT" default:"8802"`
-	UpDNS         []string `envconfig:"NODE_UPSTREAN_DNS"`
-	MetricsPort   int      `envconfig:"NODE_METRUCSPort" default:"8803"`
-	WorkDir       string   `envconfig:"NODE_WORKDIR" default:"/opt/oars/woker"`
-	ContainerCIDR string   `envconfig:"NODE_CONTAINER_CIDR"`
-	Interface     string   `envconfig:"NODE_INTERFACE"`
-	Vault         VaultConfig
-	Loki          LokiConfig
+	Hostname         string   `envconfig:"NODE_HOSTNAME"`
+	IP               string   `envconfig:"NODE_IP"`
+	Port             int      `envconfig:"NODE_PORT" default:"8802"`
+	UpDNS            []string `envconfig:"NODE_UPSTREAN_DNS"`
+	MetricsPort      int      `envconfig:"NODE_METRUCSPort" default:"8803"`
+	WorkDir          string   `envconfig:"NODE_WORKDIR" default:"/opt/oars/woker"`
+	ContainerNetwork string   `envconfig:"NODE_CONTAINER_NETWORK" default:"bridge"`
+	ContainerCIDR    string   `envconfig:"NODE_CONTAINER_CIDR"`
+	Interface        string   `envconfig:"NODE_INTERFACE"`
+	Vault            VaultConfig
+	Loki             LokiConfig
 }
 
 //IngressConfig ingress 配置

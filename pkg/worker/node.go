@@ -51,6 +51,21 @@ func (d *daemon) initNode() error {
 		d.node.Interface = d.getInterface()
 		//config network
 		go d.configNetwork()
+
+		ns, err := d.ListNetworks()
+		if err != nil {
+			return err
+		}
+		for _, n := range ns {
+			if n == d.node.ContainerNetwork {
+				return nil
+			}
+		}
+		err = d.CreateNetwork(d.node.ContainerNetwork, "bridge", d.node.ContainerCIDR)
+		if err != nil {
+			return err
+		}
+
 	}
 	return err
 }

@@ -170,6 +170,9 @@ func (d *daemon) parseContainerSvc(svc *core.Service) []*core.ContainerService {
 		}
 		container.Labels[core.HashLabelKey] = md5V(container)
 		container.Labels[core.CreatorLabelKey] = "oars"
+		if container.NetworkMode == "" {
+			container.NetworkMode = d.node.ContainerNetwork
+		}
 		cSvcs = append(cSvcs, container)
 	}
 	return cSvcs

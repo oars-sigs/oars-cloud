@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-connections/nat"
 
@@ -291,6 +292,35 @@ func (d *daemon) Exec(id string, cmd string) (types.HijackedResponse, error) {
 		return resp, err
 	}
 	return resp, err
+}
+
+func (d *daemon) CreateNetwork(name, driver, subnet string) error {
+	nc := types.NetworkCreate{
+		Driver: driver,
+		IPAM: &network.IPAM{
+			Driver: driver,
+			Config: []network.IPAMConfig{
+				network.IPAMConfig{
+					Subnet: subnet,
+				},
+			},
+		},
+		CheckDuplicate: true,
+	}
+	_, err := d.c.NetworkCreate(context.Background(), name, nc)
+	return err
+}
+
+func (d *daemon) ListNetworks() ([]string, error) {
+	nets, err := d.c.NetworkList(context.Background(), types.NetworkListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]string, 0)
+	for _, n := range nets {
+		res = append(res, n.Name)
+	}
+	return res, err
 }
 
 var (
