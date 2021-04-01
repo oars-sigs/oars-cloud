@@ -328,6 +328,7 @@ func reconcileRouters(link string, nodes []core.Node) (err error) {
 		}
 	}
 	for _, r := range toDel {
+		logrus.Info("delete route ", cidr)
 		_, cidr, _ := net.ParseCIDR(r)
 		if err = netlink.RouteDel(&netlink.Route{Dst: cidr}); err != nil {
 			logrus.Error("failed to del route %v", err)
@@ -335,7 +336,8 @@ func reconcileRouters(link string, nodes []core.Node) (err error) {
 	}
 
 	for _, r := range toAdd {
-		_, cidr, _ := net.ParseCIDR(r.IP)
+		logrus.Info("add route ", r.ContainerCIDR, "via ", r.IP, "dev ", link)
+		_, cidr, _ := net.ParseCIDR(r.ContainerCIDR)
 		gw := net.ParseIP(r.IP)
 		if err = netlink.RouteReplace(&netlink.Route{Dst: cidr, LinkIndex: nic.Attrs().Index, Scope: netlink.SCOPE_UNIVERSE, Gw: gw}); err != nil {
 			logrus.Error("failed to add route %v", err)
