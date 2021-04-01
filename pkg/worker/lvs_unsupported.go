@@ -10,6 +10,6 @@ func startLVS(svcLister, edpLister core.ResourceLister) error {
 	return nil
 }
 
-func reconcileRouters(nic string, nodes []core.Node) error {
+func reconcileRouters(nic string, nodes []core.Node, dstRange string) error {
 	return nil
 }

@@ -87,7 +87,7 @@ func (d *daemon) configNetwork() {
 					cidrs = append(cidrs, edp.Status.Node)
 				}
 			}
-			err := reconcileRouters(d.node.Interface, cidrs)
+			err := reconcileRouters(d.node.Interface, cidrs, d.node.ContainerRangeCIDR)
 			if err != nil {
 				logrus.Error(err)
 			}
