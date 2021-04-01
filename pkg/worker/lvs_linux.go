@@ -11,6 +11,7 @@ import (
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 	"github.com/oars-sigs/oars-cloud/pkg/ipvs"
+	"github.com/oars-sigs/oars-cloud/pkg/utils/netutils"
 
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
@@ -280,7 +281,7 @@ func parsePort(portStr string) (string, int, int, error) {
 	return protocol, svcPort, targetPort, nil
 }
 
-func reconcileRouters(link string, nodes []core.Node) (err error) {
+func reconcileRouters(link string, nodes []core.Node, dstRange string) (err error) {
 	nic, err := netlink.LinkByName(link)
 	if err != nil {
 		return
@@ -328,6 +329,9 @@ func reconcileRouters(link string, nodes []core.Node) (err error) {
 		}
 	}
 	for _, r := range toDel {
+		if dstRange != "" && !netutils.SubnetContainSubnet(dstRange, r) {
+			continue
+		}
 		logrus.Info("delete route ", r)
 		_, cidr, _ := net.ParseCIDR(r)
 		if err = netlink.RouteDel(&netlink.Route{Dst: cidr}); err != nil {
