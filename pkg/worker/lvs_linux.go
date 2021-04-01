@@ -328,7 +328,7 @@ func reconcileRouters(link string, nodes []core.Node) (err error) {
 		}
 	}
 	for _, r := range toDel {
-		logrus.Info("delete route ", cidr)
+		logrus.Info("delete route ", r)
 		_, cidr, _ := net.ParseCIDR(r)
 		if err = netlink.RouteDel(&netlink.Route{Dst: cidr}); err != nil {
 			logrus.Error("failed to del route %v", err)
