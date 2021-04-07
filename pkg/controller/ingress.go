@@ -47,6 +47,7 @@ type ingressController struct {
 	listenerCache  sync.Map
 	listenerLister core.ResourceLister
 	routeLister    core.ResourceLister
+	certLister     core.ResourceLister
 	version        int64
 }
 
@@ -70,6 +71,11 @@ func (c *ingressController) run(stopCh <-chan struct{}) error {
 		return err
 	}
 	c.routeLister = routeLister
+	certLister, err := resStore.NewLister(c.store, &core.Certificate{}, handle)
+	if err != nil {
+		return err
+	}
+	c.certLister = certLister
 	ctx := context.Background()
 	cb := &testv3.Callbacks{Debug: false}
 	srv := serverv3.NewServer(ctx, c.snapshot, cb)
@@ -374,20 +380,30 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 func (c *ingressController) getCert(host string, lis *core.IngressListener) ([]byte, []byte) {
 	score := 0
 	index := -1
-	for i, tlsCert := range lis.TLSCerts {
-		cerths := strings.Split(tlsCert.Host, ".")
+	certRes, _ := c.certLister.List()
+	for i, tlsCert := range certRes {
+		cert := tlsCert.(*core.Certificate)
+		if cert.Cert == "" || cert.Info.IsCA || len(cert.Info.Domains) == 0 {
+			continue
+		}
+		cerths := strings.Split(cert.Info.Domains[0], ".")
 		hs := strings.Split(host, ".")
 		if len(cerths) > len(hs) {
 			continue
 		}
 		curScore := 0
-		for n, ch := range cerths {
+		for n := len(cerths) - 1; n >= 0; n-- {
+			ch := cerths[n]
 			if hs[n] == ch {
 				curScore += 2
 				continue
 			}
 			if ch == "*" {
 				curScore++
+				break
+			}
+			if hs[n] != ch {
+				curScore = 0
 				break
 			}
 		}
@@ -397,8 +413,8 @@ func (c *ingressController) getCert(host string, lis *core.IngressListener) ([]b
 		}
 	}
 	if index != -1 {
-		cert, _ := base64.StdEncoding.DecodeString(lis.TLSCerts[index].Cert)
-		key, _ := base64.StdEncoding.DecodeString(lis.TLSCerts[index].Key)
+		cert, _ := base64.StdEncoding.DecodeString(certRes[index].(*core.Certificate).Cert)
+		key, _ := base64.StdEncoding.DecodeString(certRes[index].(*core.Certificate).Key)
 		return cert, key
 	}
 	return nil, nil

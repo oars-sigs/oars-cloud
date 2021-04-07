@@ -36,14 +36,18 @@ type EtcdConfig struct {
 
 //NodeConfig 节点配置
 type NodeConfig struct {
-	Hostname      string   `envconfig:"NODE_HOSTNAME"`
-	IP            string   `envconfig:"NODE_IP"`
-	Port          int      `envconfig:"NODE_PORT" default:"8802"`
-	UpDNS         []string `envconfig:"NODE_UPSTREAN_DNS"`
-	MetricsPort   int      `envconfig:"NODE_METRUCSPort" default:"8803"`
-	WorkDir       string   `envconfig:"NODE_WORKDIR" default:"/opt/oars/woker"`
-	ContainerCIDR string   `envconfig:"NODE_CONTAINER_CIDR"`
-	Interface     string   `envconfig:"NODE_INTERFACE"`
+	Hostname           string   `envconfig:"NODE_HOSTNAME"`
+	IP                 string   `envconfig:"NODE_IP"`
+	Port               int      `envconfig:"NODE_PORT" default:"8802"`
+	UpDNS              []string `envconfig:"NODE_UPSTREAN_DNS"`
+	MetricsPort        int      `envconfig:"NODE_METRUCSPort" default:"8803"`
+	WorkDir            string   `envconfig:"NODE_WORKDIR" default:"/opt/oars/woker"`
+	ContainerNetwork   string   `envconfig:"NODE_CONTAINER_NETWORK" default:"bridge"`
+	ContainerCIDR      string   `envconfig:"NODE_CONTAINER_CIDR"`
+	ContainerRangeCIDR string   `envconfig:"NODE_CONTAINER_RANGE_CIDR"`
+	Interface          string   `envconfig:"NODE_INTERFACE"`
+	Vault              VaultConfig
+	Loki               LokiConfig
 }
 
 //IngressConfig ingress 配置
@@ -61,4 +65,18 @@ type ImageRegistryConfig struct {
 	Address  string `json:"address"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+//VaultConfig vault config
+type VaultConfig struct {
+	Address string `envconfig:"VAULT_ADDRESSS"`
+	TOKEN   string `envconfig:"VAULT_TOKEN"`
+}
+
+type LokiConfig struct {
+	Enabled bool   `envconfig:"LOKI_ENABLED"`
+	Drive   string `envconfig:"LOKI_PLUGIN_DRIVER" default:"loki"`
+	URL     string `envconfig:"LOKI_ADDRESS" default:"http://loki.system:3100/loki/api/v1/push"`
+	MaxSize string `envconfig:"LOKI_MAX_SIZE" default:"50m"`
+	MaxFile string `envconfig:"LOKI_MAX_FILE" default:"10"`
 }

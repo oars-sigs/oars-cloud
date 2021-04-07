@@ -134,14 +134,24 @@ func (d *daemon) parseContainerSvc(svc *core.Service) []*core.ContainerService {
 	if svc.Kind != "docker" {
 		return cSvcs
 	}
+	ename := ""
+	enames := strings.Split(svc.Name, "@")
+	if len(enames) > 1 {
+		svc.Name = enames[0]
+		ename = enames[1]
+	}
 	for _, ed := range svc.Endpoints {
 		if ed.Hostname != d.node.Hostname {
 			continue
 		}
 		if ed.Name == "" {
-			ed.Name = ed.Hostname
+			if ename != "" {
+				ed.Name = ename
+			} else {
+				ed.Name = ed.Hostname
+			}
 		}
-		ed.Domain = ed.Hostname + "." + svc.Name + "." + svc.Namespace
+		ed.Domain = ed.Name + "." + svc.Name + "." + svc.Namespace
 		vars := core.ServiceValues{
 			Node: core.Node{
 				Hostname: d.node.Hostname,
@@ -160,6 +170,9 @@ func (d *daemon) parseContainerSvc(svc *core.Service) []*core.ContainerService {
 		}
 		container.Labels[core.HashLabelKey] = md5V(container)
 		container.Labels[core.CreatorLabelKey] = "oars"
+		if container.NetworkMode == "" {
+			container.NetworkMode = d.node.ContainerNetwork
+		}
 		cSvcs = append(cSvcs, container)
 	}
 	return cSvcs
@@ -327,6 +340,24 @@ func (d *daemon) syncDockerSvc() error {
 				}
 			}
 			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
+		}
+
+		//vault
+		if d.vault != nil {
+			for i, v := range svc.Environment {
+				kv := strings.Split(v, "=")
+				if len(kv) < 2 {
+					continue
+				}
+				if strings.HasPrefix(kv[1], "$oars_vault:") {
+					keys := strings.Split(kv[1], ":")
+					if len(keys) != 3 {
+						continue
+					}
+					value, _ := d.vault.Get(keys[1], keys[2])
+					svc.Environment[i] = kv[0] + "=" + value
+				}
+			}
 		}
 
 		//registry auth

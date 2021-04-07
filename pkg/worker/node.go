@@ -51,6 +51,21 @@ func (d *daemon) initNode() error {
 		d.node.Interface = d.getInterface()
 		//config network
 		go d.configNetwork()
+
+		ns, err := d.ListNetworks()
+		if err != nil {
+			return err
+		}
+		for _, n := range ns {
+			if n == d.node.ContainerNetwork {
+				return nil
+			}
+		}
+		err = d.CreateNetwork(d.node.ContainerNetwork, "bridge", d.node.ContainerCIDR)
+		if err != nil {
+			return err
+		}
+
 	}
 	return err
 }
@@ -62,17 +77,17 @@ func (d *daemon) configNetwork() {
 		case <-t.C:
 			ress, ok := d.edpLister.List()
 			if !ok {
-				return
+				continue
 			}
-			cidrs := make([]string, 0)
+			cidrs := make([]core.Node, 0)
 			for _, res := range ress {
 				edp := res.(*core.Endpoint)
 				if edp.Service == "node" && edp.Namespace == "system" &&
 					edp.Name != d.node.Hostname && edp.Status.Node.ContainerCIDR != "" {
-					cidrs = append(cidrs, edp.Status.Node.ContainerCIDR)
+					cidrs = append(cidrs, edp.Status.Node)
 				}
 			}
-			err := reconcileRouters(d.node.Interface, cidrs)
+			err := reconcileRouters(d.node.Interface, cidrs, d.node.ContainerRangeCIDR)
 			if err != nil {
 				logrus.Error(err)
 			}

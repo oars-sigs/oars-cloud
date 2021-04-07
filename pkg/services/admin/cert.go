@@ -44,6 +44,7 @@ func (s *service) initCert() {
 		Info: &core.CertInformation{
 			CommonName: "OarsCloudServer",
 			Expires:    100,
+			Domains:    []string{"*"},
 		},
 	}
 	_, err = s.certStore.Get(context.TODO(), defaultCert, &core.GetOptions{})
@@ -61,7 +62,7 @@ func (s *service) PutCert(args interface{}) *core.APIReply {
 	if !nameRegex.MatchString(cert.Name) {
 		return e.InvalidParameterError()
 	}
-	if cert.Cert == "" {
+	if cert.Acme == nil && cert.Cert == "" {
 		if cert.Info.IsCA {
 			crt, key, err := rsa.CreateCRT(nil, nil, cert.Info)
 			if err != nil {

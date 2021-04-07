@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	_ "net/http/pprof"
+
 	"github.com/oars-sigs/oars-cloud/pkg/version"
 	"github.com/spf13/cobra"
 )

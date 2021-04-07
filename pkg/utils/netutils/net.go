@@ -25,3 +25,23 @@ func FirstSubnetIP(subnet string) (string, error) {
 	ipInt := InetAtoN(cidr.IP.String())
 	return InetNtoA(ipInt + 1), nil
 }
+
+func SubnetContainIP(subnet, ip string) bool {
+	_, ipnet, err := net.ParseCIDR(subnet)
+	if err == nil {
+		return ipnet.Contains(net.ParseIP(ip))
+	}
+	return false
+}
+
+func SubnetContainSubnet(src, dst string) bool {
+	_, sipnet, err := net.ParseCIDR(src)
+	if err != nil {
+		return false
+	}
+	_, dipnet, err := net.ParseCIDR(dst)
+	if err != nil {
+		return false
+	}
+	return sipnet.Contains(dipnet.IP)
+}

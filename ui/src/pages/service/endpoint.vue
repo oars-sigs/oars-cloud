@@ -119,7 +119,7 @@
       max-width="1000"
     >
       <v-card>
-        <v-card-title>服务‘{{ actionParam.args.name }}’事件</v-card-title>
+        <v-card-title>服务‘{{ actionParam.args.namespace }}_{{ actionParam.args.service }}_{{ actionParam.args.name }}’事件</v-card-title>
         <v-card-text>
           <v-simple-table dense>
             <template v-slot:default>

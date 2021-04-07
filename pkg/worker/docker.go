@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-connections/nat"
 
@@ -144,8 +145,19 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		Sysctls:      svc.Sysctls,
 		PortBindings: ports,
 	}
-
-	hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
+	if d.node.Loki.Enabled {
+		labels := fmt.Sprintf("container_name={{.Name}},namespace=%s,service=%s,endpoint=%s", edp.Namespace, edp.Service, edp.Name)
+		hostCfg.LogConfig = container.LogConfig{
+			Type: d.node.Loki.Drive,
+			Config: map[string]string{
+				"loki-url":             d.node.Loki.URL,
+				"max-size":             d.node.Loki.MaxSize,
+				"max-file":             d.node.Loki.MaxFile,
+				"loki-external-labels": labels,
+			},
+		}
+	}
+	//hostCfg.DNS = append(hostCfg.DNS, d.node.UpDNS...)
 	ct, err := d.c.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)
 	if err != nil {
 		return "", err
@@ -280,6 +292,35 @@ func (d *daemon) Exec(id string, cmd string) (types.HijackedResponse, error) {
 		return resp, err
 	}
 	return resp, err
+}
+
+func (d *daemon) CreateNetwork(name, driver, subnet string) error {
+	nc := types.NetworkCreate{
+		Driver: driver,
+		IPAM: &network.IPAM{
+			Driver: driver,
+			Config: []network.IPAMConfig{
+				network.IPAMConfig{
+					Subnet: subnet,
+				},
+			},
+		},
+		CheckDuplicate: true,
+	}
+	_, err := d.c.NetworkCreate(context.Background(), name, nc)
+	return err
+}
+
+func (d *daemon) ListNetworks() ([]string, error) {
+	nets, err := d.c.NetworkList(context.Background(), types.NetworkListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]string, 0)
+	for _, n := range nets {
+		res = append(res, n.Name)
+	}
+	return res, err
 }
 
 var (

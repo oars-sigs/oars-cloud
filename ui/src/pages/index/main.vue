@@ -102,12 +102,20 @@ export default {
         ],
       },
       {
+        action: "mdi-monitor-dashboard",
+        title: "监控",
+        items: [
+          { title: "监控管理", path: "/monitor" },
+        ],
+      },
+      {
         action: "mdi-settings",
         title: "配置",
         items: [
           { title: "配置管理", path: "/setting" },
         ],
       },
+      
     ],
     itemIndex: 0,
   }),

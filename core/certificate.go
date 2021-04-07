@@ -10,9 +10,11 @@ type Certificate struct {
 	*ResourceMeta
 	RootCA string           `json:"rootCA,omitempty"`
 	Info   *CertInformation `json:"info,omitempty"`
+	CACert string           `json:"caCert"`
 	Cert   string           `json:"cert"`
 	Key    string           `json:"key"`
 	P12    string           `json:"p12"`
+	Acme   *AcmeConfig      `json:"acme"`
 }
 
 //CertInformation cert info

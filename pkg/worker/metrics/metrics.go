@@ -31,7 +31,7 @@ func Start(c *client.Client, node core.NodeConfig) {
 
 // Return - returns a map of metrics to be used by the exporter
 func Return() map[string]*prometheus.Desc {
-	labels := []string{"namespace", "servive", "hostname", "name"}
+	labels := []string{"namespace", "service", "hostname", "name"}
 	labelsInterface := append(labels, "interface")
 	containerMetrics := make(map[string]*prometheus.Desc)
 
