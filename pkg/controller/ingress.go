@@ -228,6 +228,7 @@ func (c *ingressController) makeTCPChains(lis *core.IngressListener, rules map[s
 func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[string][]ingressRule, clustersMap map[string]*cluster.Cluster) ([]*listener.FilterChain, []types.Resource) {
 	filterChains := make([]*listener.FilterChain, 0)
 	routers := make([]types.Resource, 0)
+	virtualHosts := make([]*route.VirtualHost, 0)
 	//range and create one listener all hosts
 	for host, irs := range rules {
 		routes := make([]*route.Route, 0)
@@ -289,16 +290,22 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 
 		//router
 		routeName := fmt.Sprintf("%s_%s", lis.Name, strings.ReplaceAll(host, ".", "_"))
-		domains := []string{"*"}
+		//add http virtualHosts
 		if lis.DisabledTLS {
-			domains = []string{host}
+			virtualHosts = append(virtualHosts, &route.VirtualHost{
+				Name:    routeName,
+				Domains: []string{host},
+				Routes:  routes,
+			})
+			continue
 		}
+		//add  https router
 		router := &route.RouteConfiguration{
 			Name: routeName,
 			VirtualHosts: []*route.VirtualHost{
 				&route.VirtualHost{
 					Name:    "default",
-					Domains: domains,
+					Domains: []string{"*"},
 					Routes:  routes,
 				},
 			},
@@ -329,16 +336,47 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 			continue
 		}
 
+		// generate tls cert
+		cert, key := c.getCert(host, lis)
+		tls := &tlsv3.DownstreamTlsContext{
+			CommonTlsContext: &tlsv3.CommonTlsContext{
+				TlsCertificates: []*tlsv3.TlsCertificate{
+					&tlsv3.TlsCertificate{
+						PrivateKey: &corev3.DataSource{
+							Specifier: &corev3.DataSource_InlineBytes{
+								InlineBytes: key,
+							},
+						},
+						CertificateChain: &corev3.DataSource{
+							Specifier: &corev3.DataSource_InlineBytes{
+								InlineBytes: cert,
+							},
+						},
+					},
+				},
+				//TODO: 使用sds
+				// TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
+				// 	&tlsv3.SdsSecretConfig{
+				// 		SdsConfig: makeConfigSource(),
+				// 	},
+				// },
+			},
+		}
+		pbtls, err := ptypes.MarshalAny(tls)
+		if err != nil {
+			continue
+		}
+
 		filterChain := &listener.FilterChain{
-			// FilterChainMatch: &listener.FilterChainMatch{
-			// 	ServerNames: []string{host},
-			// },
-			// TransportSocket: &corev3.TransportSocket{
-			// 	Name: "envoy.transport_sockets.tls",
-			// 	ConfigType: &corev3.TransportSocket_TypedConfig{
-			// 		TypedConfig: pbtls,
-			// 	},
-			// },
+			FilterChainMatch: &listener.FilterChainMatch{
+				ServerNames: []string{host},
+			},
+			TransportSocket: &corev3.TransportSocket{
+				Name: "envoy.transport_sockets.tls",
+				ConfigType: &corev3.TransportSocket_TypedConfig{
+					TypedConfig: pbtls,
+				},
+			},
 			Filters: []*listener.Filter{{
 				Name: wellknown.HTTPConnectionManager,
 				ConfigType: &listener.Filter_TypedConfig{
@@ -346,46 +384,45 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 				},
 			}},
 		}
-		if !lis.DisabledTLS {
-			filterChain.FilterChainMatch = &listener.FilterChainMatch{
-				ServerNames: []string{host},
-			}
-			// generate tls cert
-			cert, key := c.getCert(host, lis)
-			tls := &tlsv3.DownstreamTlsContext{
-				CommonTlsContext: &tlsv3.CommonTlsContext{
-					TlsCertificates: []*tlsv3.TlsCertificate{
-						&tlsv3.TlsCertificate{
-							PrivateKey: &corev3.DataSource{
-								Specifier: &corev3.DataSource_InlineBytes{
-									InlineBytes: key,
-								},
-							},
-							CertificateChain: &corev3.DataSource{
-								Specifier: &corev3.DataSource_InlineBytes{
-									InlineBytes: cert,
-								},
-							},
-						},
-					},
-					//TODO: 使用sds
-					// TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
-					// 	&tlsv3.SdsSecretConfig{
-					// 		SdsConfig: makeConfigSource(),
-					// 	},
-					// },
+		filterChains = append(filterChains, filterChain)
+	}
+	//add http route
+	if len(virtualHosts) > 0 {
+		router := &route.RouteConfiguration{
+			Name:         "http_without_tls",
+			VirtualHosts: virtualHosts,
+		}
+		routers = append(routers, router)
+		//hcm
+		manager := &hcm.HttpConnectionManager{
+			CodecType:  hcm.HttpConnectionManager_AUTO,
+			StatPrefix: "ingress_http",
+			RouteSpecifier: &hcm.HttpConnectionManager_Rds{
+				Rds: &hcm.Rds{
+					ConfigSource:    makeConfigSource(),
+					RouteConfigName: "http_without_tls",
 				},
-			}
-			pbtls, err := ptypes.MarshalAny(tls)
-			if err != nil {
-				continue
-			}
-			filterChain.TransportSocket = &corev3.TransportSocket{
-				Name: "envoy.transport_sockets.tls",
-				ConfigType: &corev3.TransportSocket_TypedConfig{
-					TypedConfig: pbtls,
+			},
+			HttpFilters: []*hcm.HttpFilter{{
+				Name: wellknown.Router,
+			}},
+			UpgradeConfigs: []*hcm.HttpConnectionManager_UpgradeConfig{
+				{
+					UpgradeType: "websocket",
 				},
-			}
+			},
+		}
+		pbst, err := ptypes.MarshalAny(manager)
+		if err != nil {
+
+		}
+		filterChain := &listener.FilterChain{
+			Filters: []*listener.Filter{{
+				Name: wellknown.HTTPConnectionManager,
+				ConfigType: &listener.Filter_TypedConfig{
+					TypedConfig: pbst,
+				},
+			}},
 		}
 		filterChains = append(filterChains, filterChain)
 	}
