@@ -7,8 +7,9 @@ import (
 //IngressListener 入口 Listener
 type IngressListener struct {
 	*ResourceMeta
-	Port     int              `json:"port"`
-	TLSCerts []TLSCertificate `json:"tlsCerts,omitempty"`
+	Port        int              `json:"port"`
+	TLSCerts    []TLSCertificate `json:"tlsCerts,omitempty"`
+	DisabledTLS bool             `json:"disabledTLS"`
 }
 
 //TLSCertificate 证书

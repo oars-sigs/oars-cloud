@@ -325,52 +325,60 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 			continue
 		}
 
-		// generate tls cert
-		cert, key := c.getCert(host, lis)
-		tls := &tlsv3.DownstreamTlsContext{
-			CommonTlsContext: &tlsv3.CommonTlsContext{
-				TlsCertificates: []*tlsv3.TlsCertificate{
-					&tlsv3.TlsCertificate{
-						PrivateKey: &corev3.DataSource{
-							Specifier: &corev3.DataSource_InlineBytes{
-								InlineBytes: key,
-							},
-						},
-						CertificateChain: &corev3.DataSource{
-							Specifier: &corev3.DataSource_InlineBytes{
-								InlineBytes: cert,
-							},
-						},
-					},
-				},
-				//TODO: 使用sds
-				// TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
-				// 	&tlsv3.SdsSecretConfig{
-				// 		SdsConfig: makeConfigSource(),
-				// 	},
-				// },
-			},
-		}
-		pbtls, err := ptypes.MarshalAny(tls)
-		if err != nil {
-			continue
-		}
 		filterChain := &listener.FilterChain{
 			FilterChainMatch: &listener.FilterChainMatch{
 				ServerNames: []string{host},
 			},
-			TransportSocket: &corev3.TransportSocket{
-				Name: "envoy.transport_sockets.tls",
-				ConfigType: &corev3.TransportSocket_TypedConfig{
-					TypedConfig: pbtls,
-				},
-			},
+			// TransportSocket: &corev3.TransportSocket{
+			// 	Name: "envoy.transport_sockets.tls",
+			// 	ConfigType: &corev3.TransportSocket_TypedConfig{
+			// 		TypedConfig: pbtls,
+			// 	},
+			// },
 			Filters: []*listener.Filter{{
 				Name: wellknown.HTTPConnectionManager,
 				ConfigType: &listener.Filter_TypedConfig{
 					TypedConfig: pbst,
 				},
 			}},
+		}
+		if !lis.DisabledTLS {
+			// generate tls cert
+			cert, key := c.getCert(host, lis)
+			tls := &tlsv3.DownstreamTlsContext{
+				CommonTlsContext: &tlsv3.CommonTlsContext{
+					TlsCertificates: []*tlsv3.TlsCertificate{
+						&tlsv3.TlsCertificate{
+							PrivateKey: &corev3.DataSource{
+								Specifier: &corev3.DataSource_InlineBytes{
+									InlineBytes: key,
+								},
+							},
+							CertificateChain: &corev3.DataSource{
+								Specifier: &corev3.DataSource_InlineBytes{
+									InlineBytes: cert,
+								},
+							},
+						},
+					},
+					//TODO: 使用sds
+					// TlsCertificateSdsSecretConfigs: []*tlsv3.SdsSecretConfig{
+					// 	&tlsv3.SdsSecretConfig{
+					// 		SdsConfig: makeConfigSource(),
+					// 	},
+					// },
+				},
+			}
+			pbtls, err := ptypes.MarshalAny(tls)
+			if err != nil {
+				continue
+			}
+			filterChain.TransportSocket = &corev3.TransportSocket{
+				Name: "envoy.transport_sockets.tls",
+				ConfigType: &corev3.TransportSocket_TypedConfig{
+					TypedConfig: pbtls,
+				},
+			}
 		}
 		filterChains = append(filterChains, filterChain)
 	}
