@@ -289,12 +289,16 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 
 		//router
 		routeName := fmt.Sprintf("%s_%s", lis.Name, strings.ReplaceAll(host, ".", "_"))
+		domains := []string{"*"}
+		if lis.DisabledTLS {
+			domains = []string{host}
+		}
 		router := &route.RouteConfiguration{
 			Name: routeName,
 			VirtualHosts: []*route.VirtualHost{
 				&route.VirtualHost{
 					Name:    "default",
-					Domains: []string{"*"},
+					Domains: domains,
 					Routes:  routes,
 				},
 			},
@@ -326,9 +330,9 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 		}
 
 		filterChain := &listener.FilterChain{
-			FilterChainMatch: &listener.FilterChainMatch{
-				ServerNames: []string{host},
-			},
+			// FilterChainMatch: &listener.FilterChainMatch{
+			// 	ServerNames: []string{host},
+			// },
 			// TransportSocket: &corev3.TransportSocket{
 			// 	Name: "envoy.transport_sockets.tls",
 			// 	ConfigType: &corev3.TransportSocket_TypedConfig{
@@ -343,6 +347,9 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 			}},
 		}
 		if !lis.DisabledTLS {
+			filterChain.FilterChainMatch = &listener.FilterChainMatch{
+				ServerNames: []string{host},
+			}
 			// generate tls cert
 			cert, key := c.getCert(host, lis)
 			tls := &tlsv3.DownstreamTlsContext{
