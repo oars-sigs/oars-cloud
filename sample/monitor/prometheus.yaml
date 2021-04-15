@@ -6,12 +6,15 @@
     - "--storage.tsdb.path=/prometheus"
     - "--config.file=/etc/prometheus/prometheus.yml"
   configmap: 
-    /etc/prometheus/prometheus.yml: |
+    /etc/prometheus/prometheus.yml: |-
       global:
         scrape_interval:     15s
         evaluation_interval: 15s
       scrape_configs:
-      - job_name: 'node'
-        static_configs:
-        - targets: ['dev1.node.system:8803']
+      - job_name: node
+        dns_sd_configs:
+        - names:
+          - node.system
+          type: A
+          port: 8803
                   

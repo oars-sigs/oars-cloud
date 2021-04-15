@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -186,7 +187,7 @@ func (c *ingressController) makeTCPChains(lis *core.IngressListener, rules map[s
 			if ir.TCP == nil {
 				continue
 			}
-			clusterName := ir.TCP.Backend.ServiceName + "_" + ir.namespace
+			clusterName := c.getClusterName(ir.TCP.Backend.ServiceName, ir.namespace, ir.TCP.Backend.ServicePort)
 			if _, ok := clustersMap[clusterName]; !ok {
 				cla := &endpointv3.ClusterLoadAssignment{
 					ClusterName: clusterName,
@@ -225,6 +226,10 @@ func (c *ingressController) makeTCPChains(lis *core.IngressListener, rules map[s
 	return filterChains, routers
 }
 
+func (c *ingressController) getClusterName(svc, ns string, port int) string {
+	return fmt.Sprintf("%s_%s_%d", svc, ns, port)
+}
+
 func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[string][]ingressRule, clustersMap map[string]*cluster.Cluster) ([]*listener.FilterChain, []types.Resource) {
 	filterChains := make([]*listener.FilterChain, 0)
 	routers := make([]types.Resource, 0)
@@ -235,9 +240,12 @@ func (c *ingressController) makeHTTPChains(lis *core.IngressListener, rules map[
 
 		//range and create one host all routes
 		for _, ir := range irs {
+			sort.Slice(ir.HTTP.Paths, func(i, j int) bool {
+				return strings.HasPrefix(ir.HTTP.Paths[i].Path, ir.HTTP.Paths[j].Path)
+			})
 			for _, path := range ir.HTTP.Paths {
 				//generate one route in a host
-				clusterName := fmt.Sprintf("%s_%s_%d", path.Backend.ServiceName, ir.namespace, path.Backend.ServicePort)
+				clusterName := c.getClusterName(path.Backend.ServiceName, ir.namespace, path.Backend.ServicePort)
 				r := &route.Route{
 					Match: &route.RouteMatch{
 						PathSpecifier: &route.RouteMatch_Prefix{
