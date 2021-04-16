@@ -52,7 +52,8 @@ type NodeConfig struct {
 
 //IngressConfig ingress 配置
 type IngressConfig struct {
-	XDSPort int `envconfig:"INGRESS_XDS_PORT" default:"8804"`
+	XDSPort     int `envconfig:"INGRESS_XDS_PORT" default:"8804"`
+	TraefikPort int `envconfig:"INGRESS_TRAEFIK_PORT"  default:"8805"`
 }
 
 //SystemConfig 系统配置

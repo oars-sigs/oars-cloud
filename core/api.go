@@ -87,3 +87,8 @@ func NewAPIReply(data interface{}) *APIReply {
 		Data: data,
 	}
 }
+
+//IngressControllerHandle ingress
+type IngressControllerHandle interface {
+	UpdateHandle()
+}

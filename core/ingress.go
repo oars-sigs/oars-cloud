@@ -10,6 +10,7 @@ type IngressListener struct {
 	Port        int              `json:"port"`
 	TLSCerts    []TLSCertificate `json:"tlsCerts,omitempty"`
 	DisabledTLS bool             `json:"disabledTLS"`
+	Drive       string           `json:"drive,omitempty"`
 }
 
 //TLSCertificate 证书
