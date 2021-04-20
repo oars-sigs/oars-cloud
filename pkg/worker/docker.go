@@ -298,7 +298,7 @@ func (d *daemon) CreateNetwork(name, driver, subnet string) error {
 	nc := types.NetworkCreate{
 		Driver: driver,
 		IPAM: &network.IPAM{
-			Driver: driver,
+			Driver: "default",
 			Config: []network.IPAMConfig{
 				network.IPAMConfig{
 					Subnet: subnet,
