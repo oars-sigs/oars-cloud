@@ -53,7 +53,7 @@ func New(listenerLister, routeLister, certLister core.ResourceLister, port int) 
 	cb := &testv3.Callbacks{Debug: false}
 	ctx := context.Background()
 	srv := serverv3.NewServer(ctx, snapshot, cb)
-	runServer(ctx, srv, port)
+	go runServer(ctx, srv, port)
 	return &ingress{
 		snapshot:       snapshot,
 		listenerLister: listenerLister,
@@ -92,7 +92,7 @@ func (c *ingress) UpdateHandle() {
 	clustersMap := make(map[string]*cluster.Cluster)
 	for _, v := range listenerList {
 		lis := v.(*core.IngressListener)
-		if lis.Drive != "" && lis.Drive != "envoy" {
+		if lis.Drive != "" && lis.Drive != core.IngressEnvoyDrive {
 			continue
 		}
 		if _, ok := rules[lis.Name]; !ok {
@@ -204,9 +204,7 @@ func (c *ingress) makeHTTPChains(lis *core.IngressListener, rules map[string][]i
 			sort.Slice(ir.HTTP.Paths, func(i, j int) bool {
 				return strings.HasPrefix(ir.HTTP.Paths[i].Path, ir.HTTP.Paths[j].Path)
 			})
-			fmt.Println("************")
 			for _, path := range ir.HTTP.Paths {
-				fmt.Println(path.Path)
 				//generate one route in a host
 				clusterName := c.getClusterName(path.Backend.ServiceName, ir.namespace, path.Backend.ServicePort)
 				r := &route.Route{

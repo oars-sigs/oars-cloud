@@ -52,6 +52,8 @@ const (
 	ServiceResourceNotFoundCode
 	//ServiceResourceHadExisted 资源已存在
 	ServiceResourceHadExisted
+	//ServiceResourceUsingCode 资源正在使用
+	ServiceResourceUsingCode
 )
 
 //GetErrorCodes 获取状态码表

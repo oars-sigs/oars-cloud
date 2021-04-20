@@ -1,10 +1,15 @@
 package controller
 
 import (
+	"sync"
+
 	"github.com/oars-sigs/oars-cloud/core"
+	"github.com/oars-sigs/oars-cloud/pkg/controller/ingress"
 	"github.com/oars-sigs/oars-cloud/pkg/controller/ingress/envoy"
+	"github.com/oars-sigs/oars-cloud/pkg/controller/ingress/nginx"
 	"github.com/oars-sigs/oars-cloud/pkg/controller/ingress/traefik"
 	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
+	"github.com/oars-sigs/oars-cloud/pkg/utils/strvars"
 )
 
 type ingressController struct {
@@ -16,6 +21,7 @@ type ingressController struct {
 	certLister     core.ResourceLister
 	traefikHandle  core.IngressControllerHandle
 	envoyHandle    core.IngressControllerHandle
+	nginxHandle    core.IngressControllerHandle
 }
 
 func newIngress(store core.KVStore, cfg *core.Config) *ingressController {
@@ -42,11 +48,14 @@ func (c *ingressController) run(stopCh <-chan struct{}) error {
 		return err
 	}
 	c.certLister = certLister
-
-	c.traefikHandle = traefik.New(listenerLister, routeLister, certLister, c.cfg.Ingress.TraefikPort)
-
+	if strvars.ArrayContains(c.cfg.Ingress.Drives, core.IngressTraefikDrive) {
+		c.traefikHandle = traefik.New(listenerLister, routeLister, certLister)
+	}
+	if strvars.ArrayContains(c.cfg.Ingress.Drives, core.IngressNginxDrive) {
+		c.nginxHandle = nginx.New(listenerLister, routeLister, certLister)
+	}
 	c.envoyHandle = envoy.New(listenerLister, routeLister, certLister, c.cfg.Ingress.XDSPort)
-
+	go ingress.HTTPServer(c.cfg.Ingress.HTTPPort)
 	go c.update(stopCh)
 	c.scheduler()
 	return nil
@@ -65,8 +74,29 @@ func (c *ingressController) update(stopCh <-chan struct{}) {
 		case <-stopCh:
 			return
 		case <-c.trigger:
-			c.traefikHandle.UpdateHandle()
-			c.envoyHandle.UpdateHandle()
+			wg := new(sync.WaitGroup)
+			if c.traefikHandle != nil {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					c.traefikHandle.UpdateHandle()
+				}()
+			}
+			if c.envoyHandle != nil {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					c.envoyHandle.UpdateHandle()
+				}()
+			}
+			if c.nginxHandle != nil {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					c.nginxHandle.UpdateHandle()
+				}()
+			}
+			wg.Wait()
 		}
 	}
 }

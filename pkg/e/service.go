@@ -59,3 +59,13 @@ func ResourceNotFoundError(err ...error) *core.APIReply {
 func MethodNotFoundMethod() *core.APIReply {
 	return MethodNotFoundError()
 }
+
+//ResourceUsingError 资源正在使用错误
+func ResourceUsingError(err ...error) *core.APIReply {
+	return &core.APIReply{
+		Code:    core.ServiceResourceUsingCode,
+		Msg:     "资源正在使用",
+		SubCode: "resource-using",
+		SubMsg:  getErr(err...),
+	}
+}

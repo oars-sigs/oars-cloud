@@ -19,14 +19,14 @@ type ingress struct {
 	mu             *sync.Mutex
 }
 
-func New(listenerLister, routeLister, certLister core.ResourceLister, port int) core.IngressControllerHandle {
+func New(listenerLister, routeLister, certLister core.ResourceLister) core.IngressControllerHandle {
 	h := &ingress{
 		listenerLister: listenerLister,
 		routeLister:    routeLister,
 		certLister:     certLister,
 		mu:             new(sync.Mutex),
 	}
-	go h.server(port)
+	h.handle()
 	return h
 }
 
@@ -46,7 +46,7 @@ func (c *ingress) UpdateHandle() {
 			lis := v.(*core.IngressListener)
 			if lis.Name == ingress.Listener {
 				disTLS = lis.DisabledTLS
-				if lis.Drive == "traefik" {
+				if lis.Drive == core.IngressTraefikDrive {
 					filter = true
 				}
 			}
@@ -133,8 +133,8 @@ func getServiceName(name, namespace string, port int) string {
 	return fmt.Sprintf("%s_%s_%d", name, namespace, port)
 }
 
-func (c *ingress) server(port int) {
-	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+func (c *ingress) handle() {
+	http.HandleFunc("/traefik", func(w http.ResponseWriter, req *http.Request) {
 		if c.data == nil {
 			w.WriteHeader(500)
 			return
@@ -142,5 +142,4 @@ func (c *ingress) server(port int) {
 		w.Header().Add("content-type", "application/json")
 		w.Write(c.data)
 	})
-	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
