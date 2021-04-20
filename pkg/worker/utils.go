@@ -78,11 +78,11 @@ func (d *daemon) cantainerToEndpoint(cn types.Container) *core.Endpoint {
 		},
 	}
 	for name, netw := range cn.NetworkSettings.Networks {
-		if name == "bridge" {
+		if name == "host" {
+			status.IP = d.node.IP
+		} else {
 			status.IP = netw.IPAddress
 			status.Gateway = netw.Gateway
-		} else {
-			status.IP = d.node.IP
 		}
 	}
 	edp.Status = status
