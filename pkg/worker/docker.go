@@ -19,6 +19,7 @@ import (
 	"github.com/docker/go-connections/nat"
 
 	"github.com/oars-sigs/oars-cloud/core"
+	"github.com/oars-sigs/oars-cloud/pkg/utils/netutils"
 )
 
 func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string, error) {
@@ -295,19 +296,24 @@ func (d *daemon) Exec(id string, cmd string) (types.HijackedResponse, error) {
 }
 
 func (d *daemon) CreateNetwork(name, driver, subnet string) error {
+	gateway, err := netutils.FirstSubnetIP(subnet)
+	if err != nil {
+		return err
+	}
 	nc := types.NetworkCreate{
 		Driver: driver,
 		IPAM: &network.IPAM{
 			Driver: "default",
 			Config: []network.IPAMConfig{
 				network.IPAMConfig{
-					Subnet: subnet,
+					Subnet:  subnet,
+					Gateway: gateway,
 				},
 			},
 		},
 		CheckDuplicate: true,
 	}
-	_, err := d.c.NetworkCreate(context.Background(), name, nc)
+	_, err = d.c.NetworkCreate(context.Background(), name, nc)
 	return err
 }
 
