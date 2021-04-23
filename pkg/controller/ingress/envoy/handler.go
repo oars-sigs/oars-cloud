@@ -357,8 +357,9 @@ func (c *ingress) makeHTTPChains(lis *core.IngressListener, rules map[string][]i
 	}
 	//add http route
 	if len(virtualHosts) > 0 {
+		routeName := lis.Name + "_without_tls"
 		router := &route.RouteConfiguration{
-			Name:         "http_without_tls",
+			Name:         routeName,
 			VirtualHosts: virtualHosts,
 		}
 		routers = append(routers, router)
@@ -369,7 +370,7 @@ func (c *ingress) makeHTTPChains(lis *core.IngressListener, rules map[string][]i
 			RouteSpecifier: &hcm.HttpConnectionManager_Rds{
 				Rds: &hcm.Rds{
 					ConfigSource:    makeConfigSource(),
-					RouteConfigName: "http_without_tls",
+					RouteConfigName: routeName,
 				},
 			},
 			HttpFilters: []*hcm.HttpFilter{{

@@ -19,16 +19,18 @@ type Cert struct {
 }
 
 type HTTPConfig struct {
-	Port     int
-	Host     string
-	CertName string
-	Routers  []RouteConfig
-	TLS      bool
+	Port       int
+	Host       string
+	CertName   string
+	Routers    []RouteConfig
+	TLS        bool
+	EnableAuth bool
 }
 
 type RouteConfig struct {
 	Path       string
 	ServicName string
+	EnableAuth bool
 }
 
 type TCPConfig struct {

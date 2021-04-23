@@ -73,6 +73,7 @@ func (c *ingress) UpdateHandle() {
 		if lis.Drive != core.IngressNginxDrive {
 			continue
 		}
+		lisAuth := false
 
 		for host, rules := range rules[lis.Name] {
 			tcpFlag := false
@@ -98,7 +99,15 @@ func (c *ingress) UpdateHandle() {
 							Host: path.Backend.ServiceName + "." + rule.namespace,
 							Port: path.Backend.ServicePort,
 						})
+						reqAuth := false
+						if v, ok := path.Config["auth"]; ok {
+							reqAuth = v == "true"
+						}
+						if reqAuth {
+							lisAuth = true
+						}
 						httprs = append(httprs, RouteConfig{
+							EnableAuth: reqAuth,
 							Path:       path.Path,
 							ServicName: fmt.Sprintf("%s.%s_%d", path.Backend.ServiceName, rule.namespace, path.Backend.ServicePort),
 						})
@@ -111,11 +120,12 @@ func (c *ingress) UpdateHandle() {
 					host = "localhost"
 				}
 				listen.HTTP = append(listen.HTTP, HTTPConfig{
-					Port:     lis.Port,
-					Host:     host,
-					Routers:  httprs,
-					CertName: c.getCert(host, certList),
-					TLS:      !lis.DisabledTLS,
+					Port:       lis.Port,
+					Host:       host,
+					Routers:    httprs,
+					CertName:   c.getCert(host, certList),
+					TLS:        !lis.DisabledTLS,
+					EnableAuth: lisAuth,
 				})
 
 			}
