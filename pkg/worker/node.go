@@ -119,10 +119,15 @@ func (d *daemon) configNodeInfo() {
 	for _, inf := range infs {
 		addrs, _ := inf.Addrs()
 		for _, addr := range addrs {
-			if addr.String() == d.node.IP {
-				d.node.Interface = inf.Name
-				d.node.MAC = inf.HardwareAddr.String()
+			ipNet, isValidIpNet := addr.(*net.IPNet)
+			if isValidIpNet {
+				if ipNet.IP.String() == d.node.IP {
+					d.node.Interface = inf.Name
+					d.node.MAC = inf.HardwareAddr.String()
+				}
+
 			}
+
 		}
 	}
 }
