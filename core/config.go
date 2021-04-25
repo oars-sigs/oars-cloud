@@ -38,6 +38,7 @@ type EtcdConfig struct {
 type NodeConfig struct {
 	Hostname           string   `envconfig:"NODE_HOSTNAME"`
 	IP                 string   `envconfig:"NODE_IP"`
+	MAC                string   `envconfig:"NODE_MAC"`
 	Port               int      `envconfig:"NODE_PORT" default:"8802"`
 	UpDNS              []string `envconfig:"NODE_UPSTREAN_DNS"`
 	MetricsPort        int      `envconfig:"NODE_METRUCSPort" default:"8803"`

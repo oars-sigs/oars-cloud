@@ -73,8 +73,11 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 	if svc.Environment == nil {
 		svc.Environment = make([]string, 0)
 	}
-	port := fmt.Sprintf("SERVICE_PORT=%d", svc.Port.ContainerPort)
-	svc.Environment = append(svc.Environment, port)
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_SERVICE_PORT=%d", svc.Port.ContainerPort))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_MAC=%s", d.node.MAC))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_IP=%s", d.node.IP))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_NAME=%s", d.node.Hostname))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_INTERFACE=%s", d.node.Interface))
 
 	if svc.Resources == nil {
 		svc.Resources = new(core.ContainerResource)
