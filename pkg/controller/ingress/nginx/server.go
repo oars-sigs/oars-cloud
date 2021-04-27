@@ -19,6 +19,7 @@ type ingress struct {
 	version        string
 	data           []byte
 	mu             *sync.Mutex
+	cfg            *core.IngressConfig
 }
 
 type ingressRule struct {
@@ -26,21 +27,31 @@ type ingressRule struct {
 	core.IngressRule
 }
 
-func New(listenerLister, routeLister, certLister core.ResourceLister) core.IngressControllerHandle {
+func New(listenerLister, routeLister, certLister core.ResourceLister, cfg *core.IngressConfig) core.IngressControllerHandle {
 	h := &ingress{
 		listenerLister: listenerLister,
 		routeLister:    routeLister,
 		certLister:     certLister,
 		mu:             new(sync.Mutex),
+		cfg:            cfg,
 	}
 	h.handle()
 	return h
 }
 
 func (c *ingress) UpdateHandle() {
-	routeList, _ := c.routeLister.List()
-	listenerList, _ := c.listenerLister.List()
-	certList, _ := c.certLister.List()
+	routeList, rok := c.routeLister.List()
+	if !rok {
+		return
+	}
+	listenerList, lok := c.listenerLister.List()
+	if !lok {
+		return
+	}
+	certList, cok := c.certLister.List()
+	if !cok {
+		return
+	}
 
 	//
 	rules := make(map[string]map[string][]ingressRule)
@@ -70,6 +81,9 @@ func (c *ingress) UpdateHandle() {
 	backends := make([]*Backend, 0)
 	for _, v := range listenerList {
 		lis := v.(*core.IngressListener)
+		if lis.Drive == "" {
+			lis.Drive = core.IngressNginxDrive
+		}
 		if lis.Drive != core.IngressNginxDrive {
 			continue
 		}

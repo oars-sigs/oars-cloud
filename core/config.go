@@ -53,9 +53,10 @@ type NodeConfig struct {
 
 //IngressConfig ingress 配置
 type IngressConfig struct {
-	Drives   []string `envconfig:"INGRESS_DRIVES" default:"envoy"`
-	XDSPort  int      `envconfig:"INGRESS_XDS_PORT" default:"8804"`
-	HTTPPort int      `envconfig:"INGRESS_HTTP_PORT"  default:"8805"`
+	DefaultDrive string   `envconfig:"INGRESS_DEFAULT_DRIVE" default:"envoy"`
+	Drives       []string `envconfig:"INGRESS_DRIVES" default:"envoy"`
+	XDSPort      int      `envconfig:"INGRESS_XDS_PORT" default:"8804"`
+	HTTPPort     int      `envconfig:"INGRESS_HTTP_PORT"  default:"8805"`
 }
 
 //SystemConfig 系统配置

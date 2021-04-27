@@ -17,14 +17,16 @@ type ingress struct {
 	certLister     core.ResourceLister
 	data           []byte
 	mu             *sync.Mutex
+	cfg            *core.IngressConfig
 }
 
-func New(listenerLister, routeLister, certLister core.ResourceLister) core.IngressControllerHandle {
+func New(listenerLister, routeLister, certLister core.ResourceLister, cfg *core.IngressConfig) core.IngressControllerHandle {
 	h := &ingress{
 		listenerLister: listenerLister,
 		routeLister:    routeLister,
 		certLister:     certLister,
 		mu:             new(sync.Mutex),
+		cfg:            cfg,
 	}
 	h.handle()
 	return h
@@ -46,6 +48,9 @@ func (c *ingress) UpdateHandle() {
 			lis := v.(*core.IngressListener)
 			if lis.Name == ingress.Listener {
 				disTLS = lis.DisabledTLS
+				if lis.Drive == "" {
+					lis.Drive = c.cfg.DefaultDrive
+				}
 				if lis.Drive == core.IngressTraefikDrive {
 					filter = true
 				}

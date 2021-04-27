@@ -46,19 +46,21 @@ type ingress struct {
 	routeLister    core.ResourceLister
 	certLister     core.ResourceLister
 	version        int64
+	cfg            *core.IngressConfig
 }
 
-func New(listenerLister, routeLister, certLister core.ResourceLister, port int) core.IngressControllerHandle {
+func New(listenerLister, routeLister, certLister core.ResourceLister, cfg *core.IngressConfig) core.IngressControllerHandle {
 	snapshot := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, log.New())
 	cb := &testv3.Callbacks{Debug: false}
 	ctx := context.Background()
 	srv := serverv3.NewServer(ctx, snapshot, cb)
-	go runServer(ctx, srv, port)
+	go runServer(ctx, srv, cfg.XDSPort)
 	return &ingress{
 		snapshot:       snapshot,
 		listenerLister: listenerLister,
 		routeLister:    routeLister,
 		certLister:     certLister,
+		cfg:            cfg,
 	}
 }
 
@@ -69,8 +71,18 @@ type ingressRule struct {
 
 func (c *ingress) UpdateHandle() {
 	rules := make(map[string]map[string][]ingressRule)
-	routeList, _ := c.routeLister.List()
-	listenerList, _ := c.listenerLister.List()
+	routeList, rok := c.routeLister.List()
+	if !rok {
+		return
+	}
+	listenerList, lok := c.listenerLister.List()
+	if !lok {
+		return
+	}
+	certList, cok := c.certLister.List()
+	if !cok {
+		return
+	}
 	for _, v := range routeList {
 		ingress := v.(*core.IngressRoute)
 		if _, ok := rules[ingress.Listener]; !ok {
@@ -92,7 +104,10 @@ func (c *ingress) UpdateHandle() {
 	clustersMap := make(map[string]*cluster.Cluster)
 	for _, v := range listenerList {
 		lis := v.(*core.IngressListener)
-		if lis.Drive != "" && lis.Drive != core.IngressEnvoyDrive {
+		if lis.Drive == "" {
+			lis.Drive = c.cfg.DefaultDrive
+		}
+		if lis.Drive != core.IngressEnvoyDrive {
 			continue
 		}
 		if _, ok := rules[lis.Name]; !ok {
@@ -100,7 +115,7 @@ func (c *ingress) UpdateHandle() {
 		}
 		filterChains, newRouters := c.makeTCPChains(lis, rules[lis.Name], clustersMap)
 		if len(filterChains) == 0 {
-			filterChains, newRouters = c.makeHTTPChains(lis, rules[lis.Name], clustersMap)
+			filterChains, newRouters = c.makeHTTPChains(lis, certList, rules[lis.Name], clustersMap)
 		}
 		routers = append(routers, newRouters...)
 		liser := &listener.Listener{
@@ -191,7 +206,7 @@ func (c *ingress) getClusterName(svc, ns string, port int) string {
 	return fmt.Sprintf("%s_%s_%d", svc, ns, port)
 }
 
-func (c *ingress) makeHTTPChains(lis *core.IngressListener, rules map[string][]ingressRule, clustersMap map[string]*cluster.Cluster) ([]*listener.FilterChain, []types.Resource) {
+func (c *ingress) makeHTTPChains(lis *core.IngressListener, certRes []core.Resource, rules map[string][]ingressRule, clustersMap map[string]*cluster.Cluster) ([]*listener.FilterChain, []types.Resource) {
 	filterChains := make([]*listener.FilterChain, 0)
 	routers := make([]types.Resource, 0)
 	virtualHosts := make([]*route.VirtualHost, 0)
@@ -306,7 +321,7 @@ func (c *ingress) makeHTTPChains(lis *core.IngressListener, rules map[string][]i
 		}
 
 		// generate tls cert
-		cert, key := c.getCert(host, lis)
+		cert, key := c.getCert(host, lis, certRes)
 		tls := &tlsv3.DownstreamTlsContext{
 			CommonTlsContext: &tlsv3.CommonTlsContext{
 				TlsCertificates: []*tlsv3.TlsCertificate{
@@ -399,10 +414,9 @@ func (c *ingress) makeHTTPChains(lis *core.IngressListener, rules map[string][]i
 	return filterChains, routers
 }
 
-func (c *ingress) getCert(host string, lis *core.IngressListener) ([]byte, []byte) {
+func (c *ingress) getCert(host string, lis *core.IngressListener, certRes []core.Resource) ([]byte, []byte) {
 	score := 0
 	index := -1
-	certRes, _ := c.certLister.List()
 	for i, tlsCert := range certRes {
 		cert := tlsCert.(*core.Certificate)
 		if cert.Cert == "" || cert.Info.IsCA || len(cert.Info.Domains) == 0 {

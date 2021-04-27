@@ -49,12 +49,12 @@ func (c *ingressController) run(stopCh <-chan struct{}) error {
 	}
 	c.certLister = certLister
 	if strvars.ArrayContains(c.cfg.Ingress.Drives, core.IngressTraefikDrive) {
-		c.traefikHandle = traefik.New(listenerLister, routeLister, certLister)
+		c.traefikHandle = traefik.New(listenerLister, routeLister, certLister, &c.cfg.Ingress)
 	}
 	if strvars.ArrayContains(c.cfg.Ingress.Drives, core.IngressNginxDrive) {
-		c.nginxHandle = nginx.New(listenerLister, routeLister, certLister)
+		c.nginxHandle = nginx.New(listenerLister, routeLister, certLister, &c.cfg.Ingress)
 	}
-	c.envoyHandle = envoy.New(listenerLister, routeLister, certLister, c.cfg.Ingress.XDSPort)
+	c.envoyHandle = envoy.New(listenerLister, routeLister, certLister, &c.cfg.Ingress)
 	go ingress.HTTPServer(c.cfg.Ingress.HTTPPort)
 	go c.update(stopCh)
 	c.scheduler()
