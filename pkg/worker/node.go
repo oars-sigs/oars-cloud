@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"net"
 	"time"
 
 	"github.com/oars-sigs/oars-cloud/core"
@@ -12,6 +13,7 @@ import (
 )
 
 func (d *daemon) initNode() error {
+	d.configNodeInfo()
 	nodeInfo, err := metrics.GetNodeInfo()
 	if err != nil {
 		return err
@@ -33,6 +35,7 @@ func (d *daemon) initNode() error {
 				Hostname:      d.node.Hostname,
 				IP:            d.node.IP,
 				ContainerCIDR: d.node.ContainerCIDR,
+				MAC:           d.node.MAC,
 			},
 		},
 	}
@@ -48,7 +51,6 @@ func (d *daemon) initNode() error {
 		return err
 	}
 	if d.node.ContainerCIDR != "" {
-		d.node.Interface = d.getInterface()
 		//config network
 		go d.configNetwork()
 
@@ -109,5 +111,23 @@ func (d *daemon) delEvent(r core.Resource, action, status string) {
 	err := d.eventstore.Delete(context.Background(), event, &core.DeleteOptions{})
 	if err != nil {
 		logrus.Error(err)
+	}
+}
+
+func (d *daemon) configNodeInfo() {
+	infs, _ := net.Interfaces()
+	for _, inf := range infs {
+		addrs, _ := inf.Addrs()
+		for _, addr := range addrs {
+			ipNet, isValidIpNet := addr.(*net.IPNet)
+			if isValidIpNet {
+				if ipNet.IP.String() == d.node.IP {
+					d.node.Interface = inf.Name
+					d.node.MAC = inf.HardwareAddr.String()
+				}
+
+			}
+
+		}
 	}
 }

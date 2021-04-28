@@ -11,6 +11,10 @@ const (
 	SystemNamespace = "system"
 	//DefaultSystemName ...
 	DefaultSystemName = "system"
+	//Ingress Drive
+	IngressEnvoyDrive   = "envoy"
+	IngressNginxDrive   = "nginx"
+	IngressTraefikDrive = "traefik"
 )
 
 const (

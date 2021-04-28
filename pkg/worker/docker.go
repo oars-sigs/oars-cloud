@@ -19,6 +19,7 @@ import (
 	"github.com/docker/go-connections/nat"
 
 	"github.com/oars-sigs/oars-cloud/core"
+	"github.com/oars-sigs/oars-cloud/pkg/utils/netutils"
 )
 
 func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string, error) {
@@ -72,8 +73,11 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 	if svc.Environment == nil {
 		svc.Environment = make([]string, 0)
 	}
-	port := fmt.Sprintf("SERVICE_PORT=%d", svc.Port.ContainerPort)
-	svc.Environment = append(svc.Environment, port)
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_SERVICE_PORT=%d", svc.Port.ContainerPort))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_MAC=%s", d.node.MAC))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_IP=%s", d.node.IP))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_NAME=%s", d.node.Hostname))
+	svc.Environment = append(svc.Environment, fmt.Sprintf("OARS_HOST_INTERFACE=%s", d.node.Interface))
 
 	if svc.Resources == nil {
 		svc.Resources = new(core.ContainerResource)
@@ -295,19 +299,24 @@ func (d *daemon) Exec(id string, cmd string) (types.HijackedResponse, error) {
 }
 
 func (d *daemon) CreateNetwork(name, driver, subnet string) error {
+	gateway, err := netutils.FirstSubnetIP(subnet)
+	if err != nil {
+		return err
+	}
 	nc := types.NetworkCreate{
 		Driver: driver,
 		IPAM: &network.IPAM{
-			Driver: driver,
+			Driver: "default",
 			Config: []network.IPAMConfig{
 				network.IPAMConfig{
-					Subnet: subnet,
+					Subnet:  subnet,
+					Gateway: gateway,
 				},
 			},
 		},
 		CheckDuplicate: true,
 	}
-	_, err := d.c.NetworkCreate(context.Background(), name, nc)
+	_, err = d.c.NetworkCreate(context.Background(), name, nc)
 	return err
 }
 

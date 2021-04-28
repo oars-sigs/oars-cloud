@@ -38,6 +38,7 @@ type EtcdConfig struct {
 type NodeConfig struct {
 	Hostname           string   `envconfig:"NODE_HOSTNAME"`
 	IP                 string   `envconfig:"NODE_IP"`
+	MAC                string   `envconfig:"NODE_MAC"`
 	Port               int      `envconfig:"NODE_PORT" default:"8802"`
 	UpDNS              []string `envconfig:"NODE_UPSTREAN_DNS"`
 	MetricsPort        int      `envconfig:"NODE_METRUCSPort" default:"8803"`
@@ -52,7 +53,10 @@ type NodeConfig struct {
 
 //IngressConfig ingress 配置
 type IngressConfig struct {
-	XDSPort int `envconfig:"INGRESS_XDS_PORT" default:"8804"`
+	DefaultDrive string   `envconfig:"INGRESS_DEFAULT_DRIVE" default:"envoy"`
+	Drives       []string `envconfig:"INGRESS_DRIVES" default:"envoy"`
+	XDSPort      int      `envconfig:"INGRESS_XDS_PORT" default:"8804"`
+	HTTPPort     int      `envconfig:"INGRESS_HTTP_PORT"  default:"8805"`
 }
 
 //SystemConfig 系统配置

@@ -52,6 +52,8 @@ const (
 	ServiceResourceNotFoundCode
 	//ServiceResourceHadExisted 资源已存在
 	ServiceResourceHadExisted
+	//ServiceResourceUsingCode 资源正在使用
+	ServiceResourceUsingCode
 )
 
 //GetErrorCodes 获取状态码表
@@ -86,4 +88,9 @@ func NewAPIReply(data interface{}) *APIReply {
 		Code: ServiceSuccessCode,
 		Data: data,
 	}
+}
+
+//IngressControllerHandle ingress
+type IngressControllerHandle interface {
+	UpdateHandle()
 }

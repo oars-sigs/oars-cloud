@@ -9,6 +9,7 @@ type Node struct {
 	Hostname      string `json:"hostname"`
 	IP            string `json:"ip"`
 	ContainerCIDR string `json:"container_cidr"`
+	MAC           string `json:"mac"`
 }
 
 //Endpoint 端点

@@ -80,7 +80,7 @@ export default {
         title: "集群",
         items: [
           { title: "集群概览", path: "/" },
-          //{ title: "工作节点", path: "/node" },
+          { title: "工作节点", path: "/node" },
           { title: "命名空间", path: "/namespace" },
         ],
       },
