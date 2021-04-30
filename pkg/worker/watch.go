@@ -198,6 +198,11 @@ func (d *daemon) cacheContainers() {
 				if edp.Status.Network == "host" {
 					edp.Status.IP = d.node.IP
 				}
+				edp.Status.Node = core.Node{
+					Hostname: d.node.Hostname,
+					IP:       d.node.IP,
+					MAC:      d.node.MAC,
+				}
 				edps[edp.Status.ID] = edp
 				if oldedp, ok := d.endpointCache[edp.Status.ID]; ok {
 					if oldedp.Status.IP != edp.Status.IP || oldedp.Status.State != edp.Status.State || oldedp.Status.ID != edp.Status.ID {
