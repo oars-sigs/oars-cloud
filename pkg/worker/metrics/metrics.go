@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/docker/docker/client"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -15,14 +14,14 @@ import (
 type Exporter struct {
 	containerMetrics map[string]*prometheus.Desc
 	node             core.NodeConfig
-	c                *client.Client
+	cri              core.ContainerRuntimeInterface
 }
 
-func Start(c *client.Client, node core.NodeConfig) {
+func Start(cri core.ContainerRuntimeInterface, node core.NodeConfig) {
 	exporter := Exporter{
 		containerMetrics: Return(),
 		node:             node,
-		c:                c,
+		cri:              cri,
 	}
 	prometheus.MustRegister(&exporter)
 	http.Handle("/metrics", promhttp.Handler())

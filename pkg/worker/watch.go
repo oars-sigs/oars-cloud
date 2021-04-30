@@ -191,11 +191,13 @@ func (d *daemon) cacheContainers() {
 			}
 			edps := make(map[string]*core.Endpoint)
 			putEps := make([]*core.Endpoint, 0)
-			for _, cn := range cs {
-				if _, ok := cn.Labels[core.CreatorLabelKey]; !ok {
+			for _, edp := range cs {
+				if _, ok := edp.Labels[core.CreatorLabelKey]; !ok {
 					continue
 				}
-				edp := d.cantainerToEndpoint(cn)
+				if edp.Status.Network == "host" {
+					edp.Status.IP = d.node.IP
+				}
 				edps[edp.Status.ID] = edp
 				if oldedp, ok := d.endpointCache[edp.Status.ID]; ok {
 					if oldedp.Status.IP != edp.Status.IP || oldedp.Status.State != edp.Status.State || oldedp.Status.ID != edp.Status.ID {

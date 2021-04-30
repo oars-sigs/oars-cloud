@@ -14,4 +14,7 @@ var (
 
 	//ErrCACertNotFound ...
 	ErrCACertNotFound = errors.New("ca cert not found")
+
+	//ErrInvalidContainerDrive ...
+	ErrInvalidContainerDrive = errors.New("invalid container drive")
 )

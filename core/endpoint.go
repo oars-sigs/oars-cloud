@@ -27,6 +27,7 @@ type EndpointStatus struct {
 	StateDetail string      `json:"stateDetail"`
 	ID          string      `json:"id,omitempty"`
 	IP          string      `json:"ip,omitempty"`
+	Network     string      `json:"network,omitempty"`
 	Port        int         `json:"port,omitempty"`
 	Gateway     string      `json:"gateway,omitempty"`
 	Node        Node        `json:"node,omitempty"`

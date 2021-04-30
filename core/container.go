@@ -35,6 +35,7 @@ type ContainerService struct {
 	ConfigMap       map[string]string      `json:"configmap,omitempty"`
 	Ports           []string               `json:"ports,omitempty"`
 	Expose          []string               `json:"expose,omitempty"`
+	DNS             []string               `json:"dns,omitempty"`
 }
 
 var (
