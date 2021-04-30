@@ -164,6 +164,7 @@ func (d *daemon) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 	for _, cn := range cs {
 		cname := strings.TrimPrefix(cn.Names[0], "/")
 		edp := core.GetEndpointByContainerName(cname)
+		edp.Labels = cn.Labels
 		status := &core.EndpointStatus{
 			ID:          cn.ID,
 			State:       cn.State,
