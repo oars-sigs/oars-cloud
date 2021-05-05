@@ -86,7 +86,7 @@ func (d *daemon) Restart(ctx context.Context, id string) error {
 func (d *daemon) Log(ctx context.Context, id, tail, since string) (string, error) {
 	return d.cri.Log(ctx, id, tail, since)
 }
-func (d *daemon) Exec(id string, cmd string) (*core.HijackedResponse, error) {
+func (d *daemon) Exec(id string, cmd string) (core.ExecResp, error) {
 	ctx := context.Background()
 	return d.cri.Exec(ctx, id, cmd)
 }

@@ -1,9 +1,11 @@
 package docker
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"io/ioutil"
+	"net"
 	"strings"
 	"time"
 
@@ -184,7 +186,26 @@ func (d *daemon) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 	return edps, nil
 }
 
-func (d *daemon) Exec(ctx context.Context, id string, cmd string) (*core.HijackedResponse, error) {
+// HijackedResponse holds connection information for a hijacked request.
+type HijackedResponse struct {
+	Conn   net.Conn
+	Reader *bufio.Reader
+}
+
+// Close closes the hijacked connection and reader.
+func (h *HijackedResponse) Close() error {
+	return h.Conn.Close()
+}
+
+func (h *HijackedResponse) Write(p []byte) (n int, err error) {
+	return h.Conn.Write(p)
+}
+
+func (h *HijackedResponse) Read(p []byte) (n int, err error) {
+	return h.Reader.Read(p)
+}
+
+func (d *daemon) Exec(ctx context.Context, id string, cmd string) (core.ExecResp, error) {
 	opts := types.ExecConfig{
 		AttachStdin:  true,
 		AttachStdout: true,
@@ -204,7 +225,7 @@ func (d *daemon) Exec(ctx context.Context, id string, cmd string) (*core.Hijacke
 	if err != nil {
 		return nil, err
 	}
-	return &core.HijackedResponse{
+	return &HijackedResponse{
 		Conn:   resp.Conn,
 		Reader: resp.Reader,
 	}, err

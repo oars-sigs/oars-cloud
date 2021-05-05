@@ -1,9 +1,7 @@
 package core
 
 import (
-	"bufio"
 	"context"
-	"net"
 	"strings"
 )
 
@@ -16,7 +14,7 @@ type ContainerRuntimeInterface interface {
 	Restart(ctx context.Context, id string) error
 	Log(ctx context.Context, id, tail, since string) (string, error)
 	List(ctx context.Context, all bool) ([]*Endpoint, error)
-	Exec(ctx context.Context, id string, cmd string) (*HijackedResponse, error)
+	Exec(ctx context.Context, id string, cmd string) (ExecResp, error)
 	ImagePull(ctx context.Context, svc *ContainerService) error
 	Metrics(ctx context.Context, id string, labels map[string]string) (*ContainerMetrics, error)
 	CreateNetwork(ctx context.Context, name, driver, subnet string) error
@@ -36,15 +34,10 @@ func GetEndpointByContainerName(s string) *Endpoint {
 	}
 }
 
-// HijackedResponse holds connection information for a hijacked request.
-type HijackedResponse struct {
-	Conn   net.Conn
-	Reader *bufio.Reader
-}
-
-// Close closes the hijacked connection and reader.
-func (h *HijackedResponse) Close() {
-	h.Conn.Close()
+type ExecResp interface {
+	Write(p []byte) (n int, err error)
+	Read(p []byte) (n int, err error)
+	Close() error
 }
 
 // ContainerMetrics container metrices

@@ -72,7 +72,7 @@ func (d *daemon) exec(w http.ResponseWriter, r *http.Request) {
 				stopCh <- struct{}{}
 				break
 			}
-			_, err = io.Copy(resp.Conn, reader)
+			_, err = io.Copy(resp, reader)
 			if err != nil {
 				logrus.Error(err)
 				stopCh <- struct{}{}
@@ -84,7 +84,7 @@ func (d *daemon) exec(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		buf := make([]byte, 1024)
 		for {
-			n, err := resp.Reader.Read(buf)
+			n, err := resp.Read(buf)
 			if err != err {
 				logrus.Error(err)
 				stopCh <- struct{}{}
