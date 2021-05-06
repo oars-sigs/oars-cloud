@@ -8,6 +8,7 @@ import (
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/cruntime/docker"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
+	"github.com/oars-sigs/oars-cloud/pkg/rpc"
 	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
 	"github.com/oars-sigs/oars-cloud/pkg/worker/metrics"
 )
@@ -29,10 +30,11 @@ type daemon struct {
 	sysConfig     *core.SystemConfig
 	ready         bool
 	vault         *VaultClient
+	rpcServer     *rpc.Server
 }
 
 //Start ...
-func Start(store core.KVStore, node core.NodeConfig) error {
+func Start(store core.KVStore, rpcServer *rpc.Server, node core.NodeConfig) error {
 	var cri core.ContainerRuntimeInterface
 	var err error
 	switch node.ContainerDRIVE {
@@ -54,6 +56,7 @@ func Start(store core.KVStore, node core.NodeConfig) error {
 		endpointCache: make(map[string]*core.Endpoint),
 		edpstore:      edpstore,
 		eventstore:    eventstore,
+		rpcServer:     rpcServer,
 	}
 	if node.Vault.Address != "" {
 		c, err := newVault(node.Vault.Address, node.Vault.TOKEN)
