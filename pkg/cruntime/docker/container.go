@@ -164,6 +164,10 @@ func (d *daemon) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 	}
 	edps := make([]*core.Endpoint, 0)
 	for _, cn := range cs {
+		_, ok := cn.Labels[core.CreatorLabelKey]
+		if !ok {
+			continue
+		}
 		cname := strings.TrimPrefix(cn.Names[0], "/")
 		edp := core.GetEndpointByContainerName(cname)
 		edp.Labels = cn.Labels
