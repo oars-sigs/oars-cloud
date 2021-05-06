@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"sync"
+
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -17,7 +19,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect function, called on by Prometheus Client library
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	go e.setNodeMetrics(ch)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		e.setNodeMetrics(ch)
+		wg.Done()
+	}()
 
 	metrics, err := e.asyncRetrieveMetrics()
 
@@ -33,6 +40,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, b := range metrics {
 		e.setPrometheusMetrics(b, ch)
 	}
+	wg.Wait()
 
 }
 
