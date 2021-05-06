@@ -25,6 +25,7 @@ type Server struct {
 func NewServer(addr, path, caFile, certFile, keyFile string) *Server {
 	return &Server{
 		path:     path,
+		addr:     addr,
 		funcs:    make(map[string]Func),
 		caFile:   caFile,
 		certFile: certFile,
