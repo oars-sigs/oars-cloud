@@ -9,6 +9,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/containerd/containerd v1.4.2 // indirect
+	github.com/coreos/go-iptables v0.6.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v0.7.3-0.20190111153827-295413c9d0e1
 	github.com/docker/go-connections v0.4.0
