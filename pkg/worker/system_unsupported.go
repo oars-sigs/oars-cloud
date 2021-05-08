@@ -1,3 +1,5 @@
+// +build !linux
+
 package worker
 
 import "github.com/oars-sigs/oars-cloud/core"
