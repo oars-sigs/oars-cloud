@@ -22,7 +22,7 @@ func reconcileIPTables(inf string) error {
 		return err
 	}
 	if !exists {
-		if err := ipt.Insert("filter", "FORWARD", "-i", inf, "-j", "ACCEPT"); err != nil {
+		if err := ipt.Insert("filter", "FORWARD", 1, "-i", inf, "-j", "ACCEPT"); err != nil {
 			return err
 		}
 	}
