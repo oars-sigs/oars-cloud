@@ -85,6 +85,14 @@ func (c *nodeController) healthCheck(stopCh <-chan struct{}) {
 						log.Error(err)
 					}
 				}
+				if isExist && endpoint.Status.State != "running" {
+					endpoint.Status.State = "running"
+					endpoint.Status.StateDetail = ""
+					_, err := c.store.Put(context.Background(), endpoint, &core.PutOptions{})
+					if err != nil {
+						log.Error(err)
+					}
+				}
 			}
 		case <-stopCh:
 			break
