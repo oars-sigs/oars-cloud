@@ -54,6 +54,10 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		svc.NetworkMode = "bridge"
 	}
 	svc.DNS = []string{d.node.IP}
+	if strings.HasPrefix(svc.NetworkMode, "service:") {
+		svc.NetworkMode = fmt.Sprintf("container:oars_%s_%s_%s", edp.Namespace, strings.TrimPrefix(svc.NetworkMode, "service:"), edp.Name)
+		svc.DNS = []string{}
+	}
 	//svc.DNS = append(svc.DNS, d.node.UpDNS...)
 	return d.cri.Create(ctx, svc)
 }

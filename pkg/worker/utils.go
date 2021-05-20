@@ -92,7 +92,7 @@ func (d *daemon) cantainerToEndpoint(cn types.Container) *core.Endpoint {
 func (d *daemon) cserviceToEndpoint(cservice *core.ContainerService) *core.Endpoint {
 	edp := d.getEndpointByContainerName(cservice.Name)
 	status := &core.EndpointStatus{
-		State: "scheduled",
+		State: "creating",
 		Node: core.Node{
 			Hostname: d.node.Hostname,
 			IP:       d.node.IP,
