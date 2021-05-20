@@ -94,6 +94,8 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		NetworkMode: container.NetworkMode(netMode),
 		Mounts:      mounts,
 		DNS:         svc.DNS,
+		DNSSearch:   svc.DNSSearch,
+		DNSOptions:  svc.DNSOptions,
 		Resources: container.Resources{
 			Memory:   svc.Resources.Memory * 1024,
 			CPUQuota: int64(svc.Resources.CPU * float64(100000)),

@@ -36,6 +36,8 @@ type ContainerService struct {
 	Ports           []string               `json:"ports,omitempty"`
 	Expose          []string               `json:"expose,omitempty"`
 	DNS             []string               `json:"dns,omitempty"`
+	DNSSearch       []string               `json:"dns_search,omitempty"`
+	DNSOptions      []string               `json:"dns_options,omitempty"`
 }
 
 var (
