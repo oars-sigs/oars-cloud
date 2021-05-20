@@ -37,7 +37,7 @@
             <th class="text-left">节点</th>
             <th class="text-left">IP</th>
             <th>状态</th>
-            <th>创建时间</th>
+            <th>更新时间</th>
             <th class="text-right">操作</th>
           </tr>
         </thead>
@@ -49,7 +49,7 @@
             <td>
               <span v-on="on" v-bind="attrs" :class="item.status.state+'-state'">{{ item.status.state }}</span>
             </td>
-            <td>{{ item.created | formatT }}</td>
+            <td>{{ item.updated | formatT }}</td>
             <td class="text-right">
               <v-menu bottom :offset-x="true" :offset-y="true">
                 <template v-slot:activator="{ on, attrs }">
@@ -244,6 +244,7 @@ export default {
     this.listNamespace();
   },
   beforeDestroy() {
+      console.log("aaaaa")
       clearInterval(this.timer);
   },
   methods: {

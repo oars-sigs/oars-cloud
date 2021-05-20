@@ -33,6 +33,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/prometheus/client_golang v1.1.0
+	github.com/robfig/cron v1.2.0
 	github.com/shirou/gopsutil/v3 v3.20.10
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1

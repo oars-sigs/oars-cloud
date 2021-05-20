@@ -9,6 +9,7 @@ func Start(store core.KVStore, cfg *core.Config, stopCh <-chan struct{}) {
 	nodec := newNodec(store)
 	ingressc := newIngress(store, cfg)
 	certc, err := newCert(store)
+	cronc := newCronc(store)
 	if err != nil {
 		return
 	}
@@ -16,6 +17,7 @@ func Start(store core.KVStore, cfg *core.Config, stopCh <-chan struct{}) {
 	go nodec.runNodec(nodecStopCh)
 	go ingressc.run(nodecStopCh)
 	go certc.run()
+	go cronc.run(nodecStopCh)
 	for {
 		select {
 		case <-stopCh:
