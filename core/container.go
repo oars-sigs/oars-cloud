@@ -38,6 +38,7 @@ type ContainerService struct {
 	DNS             []string               `json:"dns,omitempty"`
 	DNSSearch       []string               `json:"dns_search,omitempty"`
 	DNSOptions      []string               `json:"dns_options,omitempty"`
+	AutoRemove      bool                   `json:"auto_remove,omitempty"`
 }
 
 var (

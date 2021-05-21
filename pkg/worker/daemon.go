@@ -31,6 +31,7 @@ type daemon struct {
 	ready         bool
 	vault         *VaultClient
 	rpcServer     *rpc.Server
+	containerDeps map[string][]string
 }
 
 //Start ...
@@ -57,6 +58,7 @@ func Start(store core.KVStore, rpcServer *rpc.Server, node core.NodeConfig) erro
 		edpstore:      edpstore,
 		eventstore:    eventstore,
 		rpcServer:     rpcServer,
+		containerDeps: make(map[string][]string),
 	}
 	if node.Vault.Address != "" {
 		c, err := newVault(node.Vault.Address, node.Vault.TOKEN)

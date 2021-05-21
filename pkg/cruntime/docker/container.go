@@ -108,6 +108,7 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		PidMode:      container.PidMode(svc.Pid),
 		Sysctls:      svc.Sysctls,
 		PortBindings: ports,
+		AutoRemove:   svc.AutoRemove,
 	}
 	//创建容器
 	ct, err := d.client.ContainerCreate(ctx, cfg, hostCfg, nil, svc.Name)

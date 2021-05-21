@@ -55,8 +55,10 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 	}
 	svc.DNS = []string{d.node.IP}
 	svc.DNSSearch = []string{edp.Namespace}
+	parentContainer := ""
 	if strings.HasPrefix(svc.NetworkMode, "service:") {
-		svc.NetworkMode = fmt.Sprintf("container:oars_%s_%s_%s", edp.Namespace, strings.TrimPrefix(svc.NetworkMode, "service:"), edp.Name)
+		parentContainer = d.gencontainerName(edp.Namespace, strings.TrimPrefix(svc.NetworkMode, "service:"), edp.Name)
+		svc.NetworkMode = fmt.Sprintf("container:%s", parentContainer)
 		svc.DNS = []string{}
 		svc.DNSSearch = []string{}
 	}
@@ -65,7 +67,16 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 		svc.DNSSearch = []string{}
 	}
 	//svc.DNS = append(svc.DNS, d.node.UpDNS...)
-	return d.cri.Create(ctx, svc)
+	cid, err := d.cri.Create(ctx, svc)
+	if err != nil {
+		return "", err
+	}
+	//set depend
+	if parentContainer != "" {
+		d.setDepend(parentContainer, cid)
+	}
+
+	return cid, err
 }
 
 func (d *daemon) ImagePull(ctx context.Context, svc *core.ContainerService) error {

@@ -346,9 +346,20 @@ func (d *daemon) syncDockerSvc() error {
 					continue
 				}
 			}
+
 			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
 		}
-
+		//delete depend containers
+		for _, cid := range d.getDepends(svc.Name) {
+			err := d.Remove(ctx, cid)
+			if err != nil {
+				if d.dockerError(err) != errNotFound {
+					logrus.Error(err)
+					continue
+				}
+			}
+		}
+		d.delDepends(svc.Name)
 		//vault
 		if d.vault != nil {
 			for i, v := range svc.Environment {
