@@ -351,6 +351,7 @@ func (d *daemon) syncDockerSvc() error {
 		}
 		//delete depend containers
 		for _, cid := range d.getDepends(svc.Name) {
+			logrus.Info("delete depend container ", cid, " ,service ", svc.Name)
 			err := d.Remove(ctx, cid)
 			if err != nil {
 				if d.dockerError(err) != errNotFound {

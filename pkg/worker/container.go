@@ -59,8 +59,6 @@ func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string
 	if strings.HasPrefix(svc.NetworkMode, "service:") {
 		parentContainer = d.gencontainerName(edp.Namespace, strings.TrimPrefix(svc.NetworkMode, "service:"), edp.Name)
 		svc.NetworkMode = fmt.Sprintf("container:%s", parentContainer)
-		svc.DNS = []string{}
-		svc.DNSSearch = []string{}
 	}
 	if strings.HasPrefix(svc.NetworkMode, "container:") {
 		svc.DNS = []string{}
