@@ -1,8 +1,9 @@
 package metrics
 
 import (
-	"strings"
+	"sync"
 
+	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
@@ -18,7 +19,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect function, called on by Prometheus Client library
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	go e.setNodeMetrics(ch)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		e.setNodeMetrics(ch)
+		wg.Done()
+	}()
 
 	metrics, err := e.asyncRetrieveMetrics()
 
@@ -34,31 +40,25 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, b := range metrics {
 		e.setPrometheusMetrics(b, ch)
 	}
+	wg.Wait()
 
 }
 
 // setPrometheusMetrics takes the pointer to ContainerMetrics and uses the data to set the guages and counters
-func (e *Exporter) setPrometheusMetrics(stats *ContainerMetrics, ch chan<- prometheus.Metric) {
-	if !strings.HasPrefix(stats.Name, "oars_") {
-		return
-	}
-	names := strings.Split(stats.Name, "_")
-	if len(names) != 4 {
-		return
-	}
-	labels := []string{names[1], names[2], e.node.Hostname, names[3]}
+func (e *Exporter) setPrometheusMetrics(stats *core.ContainerMetrics, ch chan<- prometheus.Metric) {
+	labels := []string{stats.Labels["namespace"], stats.Labels["service"], e.node.Hostname, stats.Labels["name"]}
 
 	// Set CPU metrics
-	ch <- prometheus.MustNewConstMetric(e.containerMetrics["cpuUsagePercent"], prometheus.GaugeValue, calcCPUPercent(stats), labels...)
+	ch <- prometheus.MustNewConstMetric(e.containerMetrics["cpuUsagePercent"], prometheus.GaugeValue, stats.CPUUsagePercent, labels...)
 
 	// Set Memory metrics
-	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryUsagePercent"], prometheus.GaugeValue, calcMemoryPercent(stats), labels...)
-	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryUsageBytes"], prometheus.GaugeValue, float64(stats.MemoryStats.Usage), labels...)
-	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryCacheBytes"], prometheus.GaugeValue, float64(stats.MemoryStats.Stats.Cache), labels...)
-	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryLimit"], prometheus.GaugeValue, float64(stats.MemoryStats.Limit), labels...)
+	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryUsagePercent"], prometheus.GaugeValue, stats.MemoryUsagePercent, labels...)
+	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryUsageBytes"], prometheus.GaugeValue, float64(stats.MemoryUsageBytes), labels...)
+	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryCacheBytes"], prometheus.GaugeValue, float64(stats.MemoryCacheBytes), labels...)
+	ch <- prometheus.MustNewConstMetric(e.containerMetrics["memoryLimit"], prometheus.GaugeValue, float64(stats.MemoryLimit), labels...)
 
 	// Network interface stats (loop through the map of returned interfaces)
-	for key, net := range stats.NetIntefaces {
+	for key, net := range stats.Network {
 		labelsInterface := append(labels, key)
 		ch <- prometheus.MustNewConstMetric(e.containerMetrics["rxBytes"], prometheus.GaugeValue, float64(net.RxBytes), labelsInterface...)
 		ch <- prometheus.MustNewConstMetric(e.containerMetrics["rxDropped"], prometheus.GaugeValue, float64(net.RxDropped), labelsInterface...)

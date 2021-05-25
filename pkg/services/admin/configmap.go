@@ -13,7 +13,9 @@ func (s *service) initConfigMap() {
 			Name:      core.SystemConfigName,
 			Namespace: core.SystemNamespace,
 		},
-		Data: make(map[string]string),
+		Data: map[string]string{
+			"webName": "Oars-Cloud",
+		},
 	}
 	_, err := s.cfgStore.Get(context.TODO(), cfg, &core.GetOptions{})
 	if err == e.ErrResourceNotFound {

@@ -10,6 +10,7 @@ import (
 	"github.com/oars-sigs/oars-cloud/pkg/config"
 	"github.com/oars-sigs/oars-cloud/pkg/controller"
 	"github.com/oars-sigs/oars-cloud/pkg/etcd"
+	"github.com/oars-sigs/oars-cloud/pkg/rpc"
 	"github.com/oars-sigs/oars-cloud/pkg/server"
 	"github.com/oars-sigs/oars-cloud/pkg/services/admin"
 	"github.com/oars-sigs/oars-cloud/pkg/version"
@@ -32,12 +33,16 @@ var serverCmd = &cobra.Command{
 			log.Error(err)
 			os.Exit(-1)
 		}
-
+		rpcCli, err := rpc.NewClient("/api/gateway", cfg.Server.TLS.CAFile, cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile)
+		if err != nil {
+			log.Error(err)
+			os.Exit(-1)
+		}
 		controllerCh := make(chan struct{})
 		go controller.Start(store, cfg, controllerCh)
 		mgr := &core.APIManager{
 			Cfg:   cfg,
-			Admin: admin.New(store, cfg),
+			Admin: admin.New(store, rpcCli, cfg),
 		}
 		go server.Start(mgr)
 		sigc := make(chan os.Signal)

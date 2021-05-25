@@ -37,11 +37,15 @@ func md5V(svc *core.ContainerService) string {
 }
 
 func (d *daemon) containerName(svc *core.Service, ed *core.ServiceEndpoint) string {
-	return fmt.Sprintf("oars_%s_%s_%s", svc.Namespace, svc.Name, ed.Name)
+	return d.gencontainerName(svc.Namespace, svc.Name, ed.Name)
+}
+
+func (d *daemon) gencontainerName(namespace, svcName, edpName string) string {
+	return fmt.Sprintf("oars_%s_%s_%s", namespace, svcName, edpName)
 }
 
 func (d *daemon) containerNameByEdp(edp *core.Endpoint) string {
-	return fmt.Sprintf("oars_%s_%s_%s", edp.Namespace, edp.Service, edp.Name)
+	return d.gencontainerName(edp.Namespace, edp.Service, edp.Name)
 }
 
 func (d *daemon) serviceName(svc *core.Service) string {
@@ -92,7 +96,7 @@ func (d *daemon) cantainerToEndpoint(cn types.Container) *core.Endpoint {
 func (d *daemon) cserviceToEndpoint(cservice *core.ContainerService) *core.Endpoint {
 	edp := d.getEndpointByContainerName(cservice.Name)
 	status := &core.EndpointStatus{
-		State: "scheduled",
+		State: "creating",
 		Node: core.Node{
 			Hostname: d.node.Hostname,
 			IP:       d.node.IP,
@@ -144,4 +148,22 @@ func registryAuth(username, password string) string {
 	}
 	buf, _ := json.Marshal(&v)
 	return base64.URLEncoding.EncodeToString(buf)
+}
+
+func (d *daemon) getDepends(name string) []string {
+	if deps, ok := d.containerDeps[name]; ok {
+		return deps
+	}
+	return []string{}
+}
+
+func (d *daemon) setDepend(name, cid string) {
+	if _, ok := d.containerDeps[name]; !ok {
+		d.containerDeps[name] = make([]string, 0)
+	}
+	d.containerDeps[name] = append(d.containerDeps[name], cid)
+}
+
+func (d *daemon) delDepends(name string) {
+	delete(d.containerDeps, name)
 }

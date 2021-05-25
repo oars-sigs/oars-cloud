@@ -9,6 +9,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/containerd/containerd v1.4.2 // indirect
+	github.com/coreos/go-iptables v0.6.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v0.7.3-0.20190111153827-295413c9d0e1
 	github.com/docker/go-connections v0.4.0
@@ -30,7 +31,9 @@ require (
 	github.com/moby/ipvs v1.0.1
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
+	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/prometheus/client_golang v1.1.0
+	github.com/robfig/cron v1.2.0
 	github.com/shirou/gopsutil/v3 v3.20.10
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1

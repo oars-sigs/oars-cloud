@@ -77,6 +77,10 @@ func (d *daemon) configNetwork() {
 	for {
 		select {
 		case <-t.C:
+			err := reconcileIPTables(d.node.Interface)
+			if err != nil {
+				logrus.Error("reconcile iptables error: ", err)
+			}
 			ress, ok := d.edpLister.List()
 			if !ok {
 				continue
@@ -89,7 +93,7 @@ func (d *daemon) configNetwork() {
 					cidrs = append(cidrs, edp.Status.Node)
 				}
 			}
-			err := reconcileRouters(d.node.Interface, cidrs, d.node.ContainerRangeCIDR)
+			err = reconcileRouters(d.node.Interface, cidrs, d.node.ContainerRangeCIDR)
 			if err != nil {
 				logrus.Error(err)
 			}

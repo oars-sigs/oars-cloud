@@ -87,10 +87,10 @@ func (c *ingress) UpdateHandle() {
 		if lis.Drive != core.IngressNginxDrive {
 			continue
 		}
-		lisAuth := false
 
 		for host, rules := range rules[lis.Name] {
 			tcpFlag := false
+			lisAuth := false
 			httprs := make([]RouteConfig, 0)
 			for _, rule := range rules {
 				if rule.TCP != nil {

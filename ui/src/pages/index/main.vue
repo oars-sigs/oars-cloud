@@ -29,7 +29,7 @@
     </v-navigation-drawer>
     <v-app-bar app fixed dark clipped-left color="indigo">
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title>OarsCloud</v-toolbar-title>
+      <v-toolbar-title>{{ webName }}</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-menu min-width="200" offset-y>
         <template v-slot:activator="{ on, attrs }">
@@ -74,6 +74,7 @@
 export default {
   data: () => ({
     drawer: true,
+    webName: "",
     items: [
       {
         action: "mdi-view-dashboard",
@@ -90,6 +91,7 @@ export default {
         items: [
           { title: "服务管理", path: "/service" },
           { title: "服务端点", path: "/endpoint" },
+          { title: "定时任务", path: "/cron" },
         ],
       },
       {
@@ -122,6 +124,14 @@ export default {
   components: {},
   created(){
     let _that=this
+    this.$call("system.admin.configmap.get",{namespace: "system",name: "system"}).then((resp) => {
+          console.log(resp.data)
+          if (resp.data[0].data.webName){
+            _that.webName= resp.data[0].data.webName;
+            return
+          }
+          _that.webName="Oars-Cloud"
+     });
     this.items.forEach((element,index )=> {
       element.items.forEach(element => {
           if (_that.$route.path==element.path){
