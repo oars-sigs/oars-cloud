@@ -7,6 +7,7 @@ import (
 
 	"github.com/oars-sigs/oars-cloud/pkg/config"
 	"github.com/oars-sigs/oars-cloud/pkg/etcd"
+	"github.com/oars-sigs/oars-cloud/pkg/rpc"
 	"github.com/oars-sigs/oars-cloud/pkg/version"
 	"github.com/oars-sigs/oars-cloud/pkg/worker"
 
@@ -28,7 +29,12 @@ var workerCmd = &cobra.Command{
 			log.Error(err)
 			os.Exit(-1)
 		}
-		err = worker.Start(store, cfg.Node)
+		rpcServer := rpc.NewServer(fmt.Sprintf(":%d", cfg.Node.Port), "/api/gateway", cfg.Server.TLS.CAFile, cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile)
+		if err != nil {
+			log.Error(err)
+			os.Exit(-1)
+		}
+		err = worker.Start(store, rpcServer, cfg.Node)
 		if err != nil {
 			log.Error(err)
 			os.Exit(-1)

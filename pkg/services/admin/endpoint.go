@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/rpc"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +32,27 @@ func (s *service) regEndpoint(ctx context.Context, action string, args interface
 		return s.DeleteEndPoint(args)
 	}
 	return e.MethodNotFoundMethod()
+}
+
+func (s *service) getAddr(hostname string) (string, error) {
+	r := s.GetEndPoint(core.Endpoint{
+		ResourceMeta: &core.ResourceMeta{
+			Namespace: "system",
+		},
+		Service: "node",
+	})
+	if r.Code != core.ServiceSuccessCode {
+		return "", errors.New(r.SubCode)
+	}
+	res := r.Data.([]core.Resource)
+	for _, v := range res {
+		ret := v.(*core.Endpoint)
+		if ret.Status.ID == hostname {
+			return fmt.Sprintf("%s:%d", ret.Status.IP, ret.Status.Port), nil
+		}
+	}
+	return "", errors.New("not found node")
+
 }
 
 func (s *service) GetEndPoint(args interface{}) *core.APIReply {
@@ -82,45 +102,11 @@ func (s *service) RestartEndPoint(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	conn, err := s.getConn(endpoint.Status.Node.Hostname)
+	addr, err := s.getAddr(endpoint.Status.Node.Hostname)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	defer conn.Close()
-	err = conn.Call("Endpoint.EndpointRestart", endpoint, nil)
-	if err != nil {
-		return e.InvalidParameterError(err)
-	}
-	return core.NewAPIReply("")
-}
-
-func (s *service) getAddr(hostname string) (string, error) {
-	r := s.GetEndPoint(core.Endpoint{
-		ResourceMeta: &core.ResourceMeta{
-			Namespace: "system",
-		},
-		Service: "node",
-	})
-	if r.Code != core.ServiceSuccessCode {
-		return "", errors.New(r.SubCode)
-	}
-	res := r.Data.([]core.Resource)
-	for _, v := range res {
-		ret := v.(*core.Endpoint)
-		if ret.Status.ID == hostname {
-			return fmt.Sprintf("%s:%d", ret.Status.IP, ret.Status.Port), nil
-		}
-	}
-	return "", errors.New("not found node")
-
-}
-func (s *service) getConn(hostname string) (*rpc.Client, error) {
-	addr, err := s.getAddr(hostname)
-	if err != nil {
-		return nil, err
-	}
-	return rpc.DialHTTP("tcp", addr)
-
+	return s.rpcClient.Call(addr, "endpoint.restart", args)
 }
 
 func (s *service) StopEndPoint(args interface{}) *core.APIReply {
@@ -129,16 +115,11 @@ func (s *service) StopEndPoint(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	conn, err := s.getConn(endpoint.Status.Node.Hostname)
+	addr, err := s.getAddr(endpoint.Status.Node.Hostname)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	defer conn.Close()
-	err = conn.Call("Endpoint.EndpointStop", &endpoint, nil)
-	if err != nil {
-		return e.InvalidParameterError(err)
-	}
-	return core.NewAPIReply("")
+	return s.rpcClient.Call(addr, "endpoint.stop", args)
 }
 
 func (s *service) GetEndPointLog(args interface{}) *core.APIReply {
@@ -147,17 +128,11 @@ func (s *service) GetEndPointLog(args interface{}) *core.APIReply {
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	conn, err := s.getConn(opt.Hostname)
+	addr, err := s.getAddr(opt.Hostname)
 	if err != nil {
 		return e.InvalidParameterError(err)
 	}
-	defer conn.Close()
-	var r core.APIReply
-	err = conn.Call("Endpoint.EndpointLog", &opt, &r)
-	if err != nil {
-		return e.InvalidParameterError(err)
-	}
-	return &r
+	return s.rpcClient.Call(addr, "endpoint.log", args)
 }
 
 var upgrader = websocket.Upgrader{
@@ -187,7 +162,7 @@ func (s *service) ExecEndPoint(cc context.Context, args interface{}) *core.APIRe
 		return core.NewAPIError(err)
 	}
 
-	addr = "ws://" + addr + "/exec?id=" + id
+	addr = "wss://" + addr + "/exec?id=" + id
 	err = s.connExec(addr+"&cmd=bash", c)
 	if err != nil {
 		err = s.connExec(addr+"&cmd=sh", c)
@@ -200,7 +175,7 @@ func (s *service) ExecEndPoint(cc context.Context, args interface{}) *core.APIRe
 }
 
 func (s *service) connExec(addr string, c *websocket.Conn) error {
-	cli, resp, err := websocket.DefaultDialer.Dial(addr, nil)
+	cli, resp, err := s.rpcClient.WSDailer().Dial(addr, nil)
 	if err != nil {
 		return err
 	}

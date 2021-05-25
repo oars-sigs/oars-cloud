@@ -47,6 +47,7 @@ type NodeConfig struct {
 	ContainerCIDR      string   `envconfig:"NODE_CONTAINER_CIDR"`
 	ContainerRangeCIDR string   `envconfig:"NODE_CONTAINER_RANGE_CIDR"`
 	Interface          string   `envconfig:"NODE_INTERFACE"`
+	ContainerDRIVE     string   `envconfig:"NODE_CONTAINER_DRIVE" default:"docker"`
 	Vault              VaultConfig
 	Loki               LokiConfig
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
+	"github.com/oars-sigs/oars-cloud/pkg/rpc"
 	"github.com/oars-sigs/oars-cloud/pkg/store/resources"
 )
 
@@ -18,10 +19,12 @@ type service struct {
 	eventStore           core.ResourceStore
 	certStore            core.ResourceStore
 	cfgStore             core.ResourceStore
+	cronStore            core.ResourceStore
+	rpcClient            *rpc.Client
 }
 
 //New admin api
-func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
+func New(store core.KVStore, rpcClient *rpc.Client, cfg *core.Config) core.ServiceInterface {
 	s := &service{
 		store:                store,
 		edpStore:             resources.NewStore(store, new(core.Endpoint)),
@@ -32,6 +35,8 @@ func New(store core.KVStore, cfg *core.Config) core.ServiceInterface {
 		eventStore:           resources.NewStore(store, new(core.Event)),
 		certStore:            resources.NewStore(store, new(core.Certificate)),
 		cfgStore:             resources.NewStore(store, new(core.ConfigMap)),
+		cronStore:            resources.NewStore(store, new(core.Cron)),
+		rpcClient:            rpcClient,
 	}
 	s.PutNamespace(core.Namespace{
 		ResourceMeta: &core.ResourceMeta{
@@ -91,6 +96,8 @@ func (s *service) Call(ctx context.Context, resource, action string, args interf
 		r = s.regCert(ctx, action, args)
 	case "configmap":
 		r = s.regConfigMap(ctx, action, args)
+	case "cron":
+		r = s.regCron(ctx, action, args)
 	default:
 		r = e.ResourceNotFoundError()
 	}

@@ -12,6 +12,7 @@ import Listener from '@/pages/ingress/listener'
 import Route from '@/pages/ingress/route'
 import Cert from '@/pages/ingress/cert'
 import Monitor from '@/pages/monitor/index'
+import Cron from '@/pages/cron/index'
 
 Vue.use(Router)
 
@@ -110,6 +111,14 @@ let router = new Router({
           component: Monitor,
           meta:{
             title: '监控管理'
+          }
+        },
+        {
+          path: '/cron',
+          name: 'Cron',
+          component: Cron,
+          meta:{
+            title: '定时任务'
           }
         },
       ]

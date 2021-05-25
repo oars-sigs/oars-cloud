@@ -8,6 +8,7 @@ export const store = new Vuex.Store({
   state: {
     namespaces: [],
     currentNamespace: "",
+    webName: "Oars-Cloud",
   },
   getters: {
     getCurrentNamespace: state => state.currentNamespace,
@@ -19,6 +20,9 @@ export const store = new Vuex.Store({
     SetCurrentNamespace(state,namespace){
         state.currentNamespace=namespace
     },
+    SetWebName(state,name){
+      state.webName=name
+  },
   },
   actions: {
     

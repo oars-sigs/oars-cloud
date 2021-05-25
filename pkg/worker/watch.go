@@ -191,11 +191,18 @@ func (d *daemon) cacheContainers() {
 			}
 			edps := make(map[string]*core.Endpoint)
 			putEps := make([]*core.Endpoint, 0)
-			for _, cn := range cs {
-				if _, ok := cn.Labels[core.CreatorLabelKey]; !ok {
+			for _, edp := range cs {
+				if _, ok := edp.Labels[core.CreatorLabelKey]; !ok {
 					continue
 				}
-				edp := d.cantainerToEndpoint(cn)
+				if edp.Status.Network == "host" {
+					edp.Status.IP = d.node.IP
+				}
+				edp.Status.Node = core.Node{
+					Hostname: d.node.Hostname,
+					IP:       d.node.IP,
+					MAC:      d.node.MAC,
+				}
 				edps[edp.Status.ID] = edp
 				if oldedp, ok := d.endpointCache[edp.Status.ID]; ok {
 					if oldedp.Status.IP != edp.Status.IP || oldedp.Status.State != edp.Status.State || oldedp.Status.ID != edp.Status.ID {
@@ -339,9 +346,21 @@ func (d *daemon) syncDockerSvc() error {
 					continue
 				}
 			}
+
 			d.addEvent(edp, core.DeleteEventAction, core.SuccessEventStatus, "")
 		}
-
+		//delete depend containers
+		for _, cid := range d.getDepends(svc.Name) {
+			logrus.Info("delete depend container ", cid, " ,service ", svc.Name)
+			err := d.Remove(ctx, cid)
+			if err != nil {
+				if d.dockerError(err) != errNotFound {
+					logrus.Error(err)
+					continue
+				}
+			}
+		}
+		d.delDepends(svc.Name)
 		//vault
 		if d.vault != nil {
 			for i, v := range svc.Environment {
