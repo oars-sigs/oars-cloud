@@ -92,7 +92,9 @@
       max-width="1000"
     >
       <v-card>
-        <v-card-title>服务‘{{ actionParam.args.name }}’日志</v-card-title>
+        <v-card-title>服务‘{{ actionParam.args.service }}_{{ actionParam.args.name }}’日志，
+          行数：<span style="width:50px" > <v-text-field v-model="logLine" @change="doAction()"></v-text-field></span>
+          </v-card-title>
         <v-card-text
           style="white-space: pre-wrap; background-color: black; color: #fff"
         >
@@ -119,7 +121,7 @@
       max-width="1000"
     >
       <v-card>
-        <v-card-title>服务‘{{ actionParam.args.namespace }}_{{ actionParam.args.service }}_{{ actionParam.args.name }}’事件</v-card-title>
+        <v-card-title>服务‘{{ actionParam.args.service }}_{{ actionParam.args.name }}’事件</v-card-title>
         <v-card-text>
           <v-simple-table dense>
             <template v-slot:default>
@@ -226,6 +228,7 @@ export default {
       logs: "",
       term: {},
       timer: null,
+      logLine: "100",
     };
   },
   filters: {
@@ -319,7 +322,7 @@ export default {
           var param = {
             id: this.actionParam.args.status.id,
             hostname:  this.actionParam.args.status.node.hostname,
-            tail: "100",
+            tail: this.logLine,
           };
           this.$call("system.admin.endpoint.log", param).then((resp) => {
             _that.logDialog = true;

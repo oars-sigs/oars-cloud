@@ -14,9 +14,6 @@ import (
 
 func (d *daemon) Create(ctx context.Context, svc *core.ContainerService) (string, error) {
 	edp := core.GetEndpointByContainerName(svc.Name)
-	if len(strings.Split(svc.Image, ":")) == 1 {
-		svc.Image += ":latest"
-	}
 	volumes := make([]string, 0)
 	for _, v := range svc.Volumes {
 		ms := strings.Split(v, ":")
