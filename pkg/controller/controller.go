@@ -13,11 +13,13 @@ func Start(store core.KVStore, cfg *core.Config, stopCh <-chan struct{}) {
 	if err != nil {
 		return
 	}
+	svcc := newSvc(store)
 	nodecStopCh := make(chan struct{})
 	go nodec.runNodec(nodecStopCh)
 	go ingressc.run(nodecStopCh)
 	go certc.run()
 	go cronc.run(nodecStopCh)
+	go svcc.run()
 	for {
 		select {
 		case <-stopCh:

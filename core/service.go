@@ -7,21 +7,33 @@ import (
 	"html/template"
 )
 
+const (
+	DockerServiceKind  = "docker"
+	StaticServiceKind  = "static"
+	RuntimeServiceKind = "runtime"
+)
+
 //Service 服务
 type Service struct {
 	*ResourceMeta
 	Kind          string            `json:"kind"`
 	Endpoints     []ServiceEndpoint `json:"endpoints"`
 	Docker        ContainerService  `json:"docker,omitempty"`
+	Static        *StaticService    `json:"static,omitempty"`
 	VirtualServer *VirtualServer    `json:"vs,omitempty"`
 }
 
 //ServiceEndpoint 服务端点
 type ServiceEndpoint struct {
 	Name     string                 `json:"name"`
-	Hostname string                 `json:"hostname"`
-	Config   map[string]interface{} `json:"config"`
+	Hostname string                 `json:"hostname,omitempty"`
+	Config   map[string]interface{} `json:"config,omitempty"`
 	Domain   string                 `json:"domain,omitempty"`
+	IP       string                 `json:"ip,omitempty"`
+}
+
+type StaticService struct {
+	Endpoints []ServiceEndpoint `json:"endpoints"`
 }
 
 //VirtualServer Linux Virtual Server

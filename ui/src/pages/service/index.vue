@@ -23,7 +23,7 @@
         ></v-select>
       </v-col>
       <v-col cols="2" align="right">
-        <v-dialog v-model="dialog" persistent max-width="600px">
+        <v-dialog v-model="dialog" persistent :scrollable="true" max-width="600px">
           <template v-slot:activator="{ on, attrs }">
             <v-btn color="primary" dark v-bind="attrs" @click="actionTitle='创建';update=false;svcYaml='';selectNodes=[]" text v-on="on">
               <v-icon left>mdi-plus</v-icon> 创建
@@ -45,7 +45,7 @@
                       :disabled="update"
                     ></v-text-field>
                   </v-col>
-                  <!-- <v-col cols="12">
+                  <v-col cols="12">
                     <v-select
                       :items="kinds"
                       v-model="actionParam.args.kind"
@@ -53,12 +53,12 @@
                         actionParam.key = 'list';
                         doAction();
                       "
-                      label="类型"
+                      label="Kind*"
                       dense
                       :disabled="update"
                     ></v-select>
-                  </v-col> -->
-                  <v-col cols="12">
+                  </v-col>
+                  <v-col cols="12" v-if="actionParam.args.kind=='docker'">
                     <v-select
                       :items="nodes"
                       v-model="selectNodes"
@@ -209,6 +209,7 @@ export default {
         },
       ],
       services: [],
+      staticIPs: [],
       namespaces: [],
       namespace: "",
       actions: [
@@ -228,7 +229,7 @@ export default {
         args: {},
       },
       svcYaml: "",
-      kinds:["docker"],
+      kinds:["docker","static"],
       nodes: [],
       selectNodes:[],
     };
@@ -327,7 +328,6 @@ export default {
         case "create":
           this.overlay = true;
           var content=yaml.safeLoad(_that.svcYaml)
-          this.actionParam.args.kind="docker"
           this.actionParam.args[_that.actionParam.args.kind]= content;
           _that.actionParam.args.endpoints=new Array();
           _that.selectNodes.forEach(function(item){
