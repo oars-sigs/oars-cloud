@@ -121,6 +121,7 @@ func (c *ingress) UpdateHandle() {
 							lisAuth = true
 						}
 						httprs = append(httprs, RouteConfig{
+							Config:     path.Config,
 							EnableAuth: reqAuth,
 							Path:       path.Path,
 							ServicName: fmt.Sprintf("%s.%s_%d", path.Backend.ServiceName, rule.namespace, path.Backend.ServicePort),

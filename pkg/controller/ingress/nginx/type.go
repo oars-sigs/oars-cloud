@@ -31,6 +31,7 @@ type RouteConfig struct {
 	Path       string
 	ServicName string
 	EnableAuth bool
+	Config     map[string]string
 }
 
 type TCPConfig struct {
