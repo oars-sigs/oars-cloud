@@ -7,6 +7,7 @@ import (
 
 	"github.com/oars-sigs/oars-cloud/core"
 	"github.com/oars-sigs/oars-cloud/pkg/cruntime/docker"
+	"github.com/oars-sigs/oars-cloud/pkg/cruntime/podman"
 	"github.com/oars-sigs/oars-cloud/pkg/e"
 	"github.com/oars-sigs/oars-cloud/pkg/rpc"
 	resStore "github.com/oars-sigs/oars-cloud/pkg/store/resources"
@@ -44,6 +45,8 @@ func Start(store core.KVStore, rpcServer *rpc.Server, node core.NodeConfig) erro
 		if err != nil {
 			return err
 		}
+	case "podman":
+		cri = podman.NewClient(podman.DefaultClientConfig())
 	default:
 		return e.ErrInvalidContainerDrive
 	}
