@@ -23,6 +23,7 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "cfg", "", "config file path")
 	rootCmd.AddCommand(serverCmd)
 	rootCmd.AddCommand(workerCmd)
+	rootCmd.AddCommand(toolCmd)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

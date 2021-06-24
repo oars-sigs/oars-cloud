@@ -28,7 +28,7 @@ func (c *client) CreateNetwork(ctx context.Context, name, driver, subnet string)
 	if err != nil {
 		return err
 	}
-	res, err := c.Post(ctx, "/libpod/network/create", bytes.NewBuffer(jsonString))
+	res, err := c.Post(ctx, "/v1.0.0/libpod/network/create", bytes.NewBuffer(jsonString))
 	if err != nil {
 		return err
 	}

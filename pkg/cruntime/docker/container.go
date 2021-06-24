@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-connections/nat"
 
@@ -179,7 +180,20 @@ func (d *daemon) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 			State:       cn.State,
 			StateDetail: cn.Status,
 		}
-		for name, netw := range cn.NetworkSettings.Networks {
+		var netw map[string]*network.EndpointSettings
+		if cn.NetworkSettings == nil {
+			cj, err := d.client.ContainerInspect(context.Background(), cn.ID)
+			if err != nil {
+				continue
+			}
+			netw = cj.NetworkSettings.Networks
+			if cj.HostConfig.NetworkMode == "host" {
+				netw = map[string]*network.EndpointSettings{"host": nil}
+			}
+		} else {
+			netw = cn.NetworkSettings.Networks
+		}
+		for name, netw := range netw {
 			status.Network = name
 			if name != "host" {
 				status.IP = netw.IPAddress
@@ -187,6 +201,7 @@ func (d *daemon) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 			}
 
 		}
+
 		edp.Status = status
 		edps = append(edps, edp)
 	}

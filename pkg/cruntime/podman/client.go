@@ -33,6 +33,7 @@ func DefaultClientConfig() ClientConfig {
 		// not? then let's try the default per-user socket location
 		cfg.SocketPath = fmt.Sprintf("unix:/run/user/%d/podman/podman.sock", uid)
 	}
+	cfg.SocketPath = "unix:/run/user/1000/podman/podman.sock"
 	return cfg
 }
 
