@@ -34,7 +34,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	if len(metrics) == 0 {
 		logrus.Info("No valid container metrics to process")
-		return
 	}
 
 	for _, b := range metrics {
