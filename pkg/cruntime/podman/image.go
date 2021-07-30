@@ -21,7 +21,7 @@ func (c *client) ImagePull(ctx context.Context, svc *core.ContainerService) erro
 		return err
 	}
 	if svc.ImagePullPolicy == core.ImagePullAlways || !isExist {
-		res, err := c.Post(ctx, fmt.Sprintf("/libpod/images/pull?reference=%s", svc.Image), nil)
+		res, err := c.Post(ctx, fmt.Sprintf("/v1.0.0/libpod/images/pull?reference=%s", svc.Image), nil)
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func (c *client) ImagePull(ctx context.Context, svc *core.ContainerService) erro
 
 func (c *client) ImageExists(ctx context.Context, nameWithTag string) (bool, error) {
 
-	res, err := c.Get(ctx, fmt.Sprintf("/libpod/images/%s/exists", nameWithTag))
+	res, err := c.Get(ctx, fmt.Sprintf("/v1.0.0/libpod/images/%s/exists", nameWithTag))
 	if err != nil {
 		return false, err
 	}

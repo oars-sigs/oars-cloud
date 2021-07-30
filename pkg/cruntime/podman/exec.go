@@ -11,6 +11,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/oars-sigs/oars-cloud/core"
 )
 
 // ExecConfig contains the configuration of an exec session
@@ -63,7 +65,7 @@ func (c *client) ExecCreate(ctx context.Context, name string, config ExecConfig)
 		return "", err
 	}
 
-	res, err := c.Post(ctx, fmt.Sprintf("/libpod/containers/%s/exec", name), bytes.NewBuffer(jsonString))
+	res, err := c.Post(ctx, fmt.Sprintf("/v3.0.0/libpod/containers/%s/exec", name), bytes.NewBuffer(jsonString))
 	if err != nil {
 		return "", err
 	}
@@ -148,8 +150,28 @@ func DemuxFrame(r io.Reader, buffer []byte, length int) (frame []byte, err error
 	return buffer[0:length], nil
 }
 
+// HijackedResponse holds connection information for a hijacked request.
+type HijackedResponse struct {
+	Conn net.Conn
+	Body io.ReadCloser
+}
+
+// Close closes the hijacked connection and reader.
+func (h *HijackedResponse) Close() error {
+	h.Body.Close()
+	return h.Conn.Close()
+}
+
+func (h *HijackedResponse) Write(p []byte) (n int, err error) {
+	return h.Conn.Write(p)
+}
+
+func (h *HijackedResponse) Read(p []byte) (n int, err error) {
+	return h.Conn.Read(p)
+}
+
 // ExecStartAndAttach starts and attaches to a given exec session.
-func (c *client) ExecStart(ctx context.Context, sessionID string, options ExecStartRequest) (net.Conn, error) {
+func (c *client) ExecStart(ctx context.Context, sessionID string, options ExecStartRequest) (core.ExecResp, error) {
 	client := new(http.Client)
 	*client = *c.httpClient
 	client.Timeout = 0
@@ -177,14 +199,20 @@ func (c *client) ExecStart(ctx context.Context, sessionID string, options ExecSt
 	// podman reference doc states that "true" is not supported
 	execStartReq := struct {
 		Detach bool `json:"Detach"`
+		Tty    bool
+		H      int `json:"h"`
+		W      int `json:"w"`
 	}{
 		Detach: false,
+		Tty:    true,
+		H:      763,
+		W:      1024,
 	}
 	jsonBytes, err := json.Marshal(execStartReq)
 	if err != nil {
 		return socket, err
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/exec/%s/start", c.baseUrl, sessionID), bytes.NewBuffer(jsonBytes))
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/v3.0.0/libpod/exec/%s/start", c.baseUrl, sessionID), bytes.NewBuffer(jsonBytes))
 	if err != nil {
 		return socket, err
 	}
@@ -193,10 +221,11 @@ func (c *client) ExecStart(ctx context.Context, sessionID string, options ExecSt
 	if err != nil {
 		return socket, err
 	}
-	defer res.Body.Close()
+	//defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
+		res.Body.Close()
 		return socket, err
 	}
 
-	return socket, nil
+	return &HijackedResponse{Conn: socket, Body: res.Body}, nil
 }

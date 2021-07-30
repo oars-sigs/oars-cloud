@@ -30,7 +30,8 @@ type containerCreateReq struct {
 	Devices        []specs.LinuxDevice   `json:"devices,omitempty"`
 	Hostadd        []string              `json:"hostadd,omitempty"`
 	Hostname       string                `json:"hostname,omitempty"`
-	CniNetworks    []string              `json:"cni_networks,omitempty"`
+	CniNetworks    []string              `json:"networks,omitempty"`
+	NetMode        string                `json:"networkMode,omitempty"`
 	Privileged     bool                  `json:"privileged,omitempty"`
 	StopSignal     int                   `json:"stop_signal,omitempty"`
 	Sysctls        map[string]string     `json:"sysctls,omitempty"`
@@ -103,12 +104,14 @@ func (c *client) Create(ctx context.Context, svc *core.ContainerService) (string
 		Hostadd:    svc.ExtraHosts,
 		Privileged: svc.Privileged,
 		WorkDir:    svc.WorkingDir,
+		NetMode:    svc.NetworkMode,
 	}
+	fmt.Println(svc.NetworkMode)
 	jsonString, err := json.Marshal(req)
 	if err != nil {
 		return "", err
 	}
-	res, err := c.Post(ctx, "/libpod/containers/create", bytes.NewBuffer(jsonString))
+	res, err := c.Post(ctx, "/v1.0.0/libpod/containers/create", bytes.NewBuffer(jsonString))
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +136,7 @@ func (c *client) Create(ctx context.Context, svc *core.ContainerService) (string
 }
 
 type containerInspectResp struct {
-	Names  []string
+	Name   string
 	Id     string
 	Config struct {
 		Labels map[string]string
@@ -156,12 +159,12 @@ type containerInspectResp struct {
 
 //List 容器列表
 func (c *client) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
-	res, err := c.Get(ctx, fmt.Sprintf("/libpod/containers/json?all=%v", all))
+	res, err := c.Get(ctx, fmt.Sprintf("/v1.0.0/libpod/containers/json?all=%v", all))
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusCreated {
+	if res.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(res.Body)
 		return nil, fmt.Errorf("unknown error, status code: %d: %s", res.StatusCode, body)
 	}
@@ -176,12 +179,12 @@ func (c *client) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 	}
 	edps := make([]*core.Endpoint, 0)
 	for _, lc := range lcresp {
-		res, err := c.Get(ctx, fmt.Sprintf("/libpod/containers/%s/json", lc.Id))
+		res, err := c.Get(ctx, fmt.Sprintf("/v1.0.0/libpod/containers/%s/json", lc.Id))
 		if err != nil {
 			return nil, err
 		}
 		defer res.Body.Close()
-		if res.StatusCode != http.StatusCreated {
+		if res.StatusCode != http.StatusOK {
 			body, _ := ioutil.ReadAll(res.Body)
 			return nil, fmt.Errorf("unknown error, status code: %d: %s", res.StatusCode, body)
 		}
@@ -194,7 +197,10 @@ func (c *client) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 		if err != nil {
 			return nil, err
 		}
-		cname := strings.TrimPrefix(cn.Names[0], "/")
+		cname := cn.Name
+		if !strings.HasPrefix(cn.Name, "oars_") {
+			continue
+		}
 		edp := core.GetEndpointByContainerName(cname)
 		edp.Labels = cn.Config.Labels
 		edp.Status = &core.EndpointStatus{
@@ -211,7 +217,7 @@ func (c *client) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
 
 //Start 启动容器
 func (c *client) Start(ctx context.Context, id string) error {
-	res, err := c.Post(ctx, fmt.Sprintf("/libpod/containers/%s/start", id), nil)
+	res, err := c.Post(ctx, fmt.Sprintf("/v1.0.0/libpod/containers/%s/start", id), nil)
 	if err != nil {
 		return err
 	}
@@ -226,7 +232,7 @@ func (c *client) Start(ctx context.Context, id string) error {
 
 //Stop 停止容器
 func (c *client) Stop(ctx context.Context, id string) error {
-	res, err := c.Post(ctx, fmt.Sprintf("/libpod/containers/%s/stop", id), nil)
+	res, err := c.Post(ctx, fmt.Sprintf("/v1.0.0/libpod/containers/%s/stop", id), nil)
 	if err != nil {
 		return err
 	}
@@ -241,7 +247,7 @@ func (c *client) Stop(ctx context.Context, id string) error {
 
 //Restart 重启容器
 func (c *client) Restart(ctx context.Context, id string) error {
-	res, err := c.Post(ctx, fmt.Sprintf("/libpod/containers/%s/restart", id), nil)
+	res, err := c.Post(ctx, fmt.Sprintf("/v1.0.0/libpod/containers/%s/restart", id), nil)
 	if err != nil {
 		return err
 	}
@@ -257,7 +263,7 @@ func (c *client) Restart(ctx context.Context, id string) error {
 //Remove 删除容器
 func (c *client) Remove(ctx context.Context, id string) error {
 	c.Stop(ctx, id)
-	res, err := c.Delete(ctx, fmt.Sprintf("/libpod/containers/%s?force=%v", id, true))
+	res, err := c.Delete(ctx, fmt.Sprintf("/v1.0.0/libpod/containers/%s?force=%v", id, true))
 	if err != nil {
 		return err
 	}
@@ -271,13 +277,15 @@ func (c *client) Remove(ctx context.Context, id string) error {
 }
 
 func (c *client) Log(ctx context.Context, id, tail, since string) (string, error) {
-	res, err := c.Get(ctx, fmt.Sprintf("/libpod/containers/%s/logs?since=%s&tail=%s", id, since, tail))
+	fmt.Println(since)
+	res, err := c.Get(ctx, fmt.Sprintf("/v3.0.0/libpod/containers/%s/logs?tail=%s&stdout=true&stderr=true", id, tail))
 	if err != nil {
 		return "", err
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusCreated {
+	if res.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(res.Body)
+		fmt.Println(string(body))
 		return "", fmt.Errorf("unknown error, status code: %d: %s", res.StatusCode, body)
 	}
 	body, err := ioutil.ReadAll(res.Body)
