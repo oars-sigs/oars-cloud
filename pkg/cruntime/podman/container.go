@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -293,6 +294,10 @@ func (c *client) Log(ctx context.Context, id, tail, since string) (string, error
 		return "", err
 	}
 	return string(body), nil
+}
+
+func (c *client) LogStream(ctx context.Context, id, tail, since string) (io.ReadCloser, error) {
+	return nil, nil
 }
 
 func (c *client) Exec(ctx context.Context, id string, cmd string) (core.ExecResp, error) {

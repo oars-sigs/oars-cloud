@@ -96,3 +96,7 @@ func (c *Client) Call(addr, method string, args interface{}) *core.APIReply {
 
 	return &reply
 }
+
+func (c *Client) HTTPClient() *http.Client {
+	return c.client
+}

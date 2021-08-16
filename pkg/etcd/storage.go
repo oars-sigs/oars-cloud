@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/oars-sigs/oars-cloud/core"
-	"go.etcd.io/etcd/clientv3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 //Put puts a key-value pair into etcd.

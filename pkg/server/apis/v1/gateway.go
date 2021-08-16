@@ -48,3 +48,12 @@ func (c *GatewayController) Exec(ctx *gin.Context) {
 		return
 	}
 }
+
+func (c *GatewayController) LogStream(ctx *gin.Context) {
+	var reply core.APIReply
+	err := c.Mgr.Admin.Call(ctx, "endpoint", "logstream", nil, &reply)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}

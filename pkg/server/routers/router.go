@@ -16,4 +16,5 @@ func NewV1(r *gin.Engine, mgr *core.APIManager) {
 	apiv1 := r.Group("/api")
 	apiv1.POST("gateway", gatewayc.Gateway)
 	apiv1.GET("exec/:hostname/:id", gatewayc.Exec)
+	apiv1.GET("log/:hostname/:id", gatewayc.LogStream)
 }

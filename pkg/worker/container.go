@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -117,6 +118,10 @@ func (d *daemon) CreateNetwork(name, driver, subnet string) error {
 func (d *daemon) ListNetworks() ([]string, error) {
 	return d.cri.ListNetworks(context.Background())
 
+}
+
+func (d *daemon) LogStream(id, tail, since string) (io.ReadCloser, error) {
+	return d.cri.LogStream(context.Background(), id, tail, since)
 }
 
 var (

@@ -38,4 +38,17 @@ type KVStore interface {
 	Delete(ctx context.Context, key string, op KVOption) error
 	Watch(ctx context.Context, key string, updateCh chan WatchChan, errCh chan error, op KVOption)
 	Register(ctx context.Context, kv KV, lease int64) (KVRegister, error)
+	LeaderController(token string) LeaderController
+}
+
+//LeaderWorker leader worker
+type LeaderWorker interface {
+	Start()
+	Stop()
+}
+
+//LeaderController
+type LeaderController interface {
+	Register(worker LeaderWorker)
+	Close()
 }

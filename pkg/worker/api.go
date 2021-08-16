@@ -58,6 +58,19 @@ func (s *rpcServer) EndpointLog(args interface{}) *core.APIReply {
 	return core.NewAPIReply(l)
 }
 
+func (d *daemon) clog(w http.ResponseWriter, r *http.Request) {
+	id := r.FormValue("id")
+	tail := r.FormValue("tail")
+	since := r.FormValue("since")
+	l, err := d.LogStream(id, tail, since)
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
+	defer l.Close()
+	io.Copy(w, l)
+}
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024 * 1024 * 10,
@@ -129,6 +142,7 @@ func (d *daemon) reg() error {
 	d.rpcServer.Register("endpoint.restart", api.EndpointRestart)
 	d.rpcServer.Register("endpoint.log", api.EndpointLog)
 	http.HandleFunc("/exec", d.exec)
+	http.HandleFunc("/log", d.clog)
 	fmt.Printf("Start RPC server in :%d\n", d.node.Port)
 	return d.rpcServer.Listen()
 }

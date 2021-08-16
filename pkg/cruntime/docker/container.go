@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -158,6 +159,19 @@ func (d *daemon) Log(ctx context.Context, id, tail, since string) (string, error
 		return "", err
 	}
 	return string(data), nil
+}
+
+func (d *daemon) LogStream(ctx context.Context, id, tail, since string) (io.ReadCloser, error) {
+	r, err := d.client.ContainerLogs(ctx, id, types.ContainerLogsOptions{
+		Tail:       tail,
+		Since:      since,
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 //List 容器列表

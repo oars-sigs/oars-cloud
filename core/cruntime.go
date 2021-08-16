@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"io"
 	"strings"
 )
 
@@ -13,6 +14,7 @@ type ContainerRuntimeInterface interface {
 	Remove(ctx context.Context, id string) error
 	Restart(ctx context.Context, id string) error
 	Log(ctx context.Context, id, tail, since string) (string, error)
+	LogStream(ctx context.Context, id, tail, since string) (io.ReadCloser, error)
 	List(ctx context.Context, all bool) ([]*Endpoint, error)
 	Exec(ctx context.Context, id string, cmd string) (ExecResp, error)
 	ImagePull(ctx context.Context, svc *ContainerService) error

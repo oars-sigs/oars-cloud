@@ -208,8 +208,13 @@ export default {
           key: "log",
         },
         {
+          title: "下载日志",
+          icon: "mdi-file-download",
+          key: "logstream",
+        },
+        {
           title: "事件",
-          icon: "mdi-file-document",
+          icon: "mdi-calendar-text",
           key: "event",
         },
         {
@@ -330,6 +335,21 @@ export default {
             data = data.substring(8);
             _that.logs = data.replace(/\n(.{8})/g, "\r\n");
           });
+          break;
+        case "logstream":
+          var id=this.actionParam.args.status.id;
+          var hostname=this.actionParam.args.status.node.hostname;
+          var link = document.createElement("a");
+          var body = document.querySelector("body");
+
+          link.href = `${window.location.protocol}//${window.location.host}/api/log/${hostname}/${id}`;
+          link.download = id+".log";
+          // fix Firefox
+          link.style.display = "none";
+          body.appendChild(link);
+          link.click();
+          body.removeChild(link);
+          window.URL.revokeObjectURL(link.href);
           break;
         case "shell":{
           let queryParam = {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -24,6 +25,8 @@ func (s *service) regEndpoint(ctx context.Context, action string, args interface
 		return s.StopEndPoint(args)
 	case "log":
 		return s.GetEndPointLog(args)
+	case "logstream":
+		return s.LogStream(ctx, args)
 	case "exec":
 		return s.ExecEndPoint(ctx, args)
 	case "event":
@@ -133,6 +136,28 @@ func (s *service) GetEndPointLog(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	return s.rpcClient.Call(addr, "endpoint.log", args)
+}
+
+func (s *service) LogStream(cc context.Context, args interface{}) *core.APIReply {
+	ctx, ok := cc.(*gin.Context)
+	if !ok {
+		return core.NewAPIError(errors.New("context error"))
+	}
+	id := ctx.Param("id")
+	hostname := ctx.Param("hostname")
+	addr, err := s.getAddr(hostname)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	urlstr := fmt.Sprintf("https://%s/clog?id=%s", addr, id)
+
+	resp, err := s.rpcClient.HTTPClient().Get(urlstr)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	defer resp.Body.Close()
+	io.Copy(ctx.Writer, resp.Body)
+	return core.NewAPIReply("")
 }
 
 var upgrader = websocket.Upgrader{

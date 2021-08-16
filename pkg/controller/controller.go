@@ -1,8 +1,23 @@
 package controller
 
 import (
+	"os"
+
 	"github.com/oars-sigs/oars-cloud/core"
+
+	log "github.com/sirupsen/logrus"
 )
+
+type worker struct {
+	wfn func()
+}
+
+func (w *worker) Start() {
+	w.wfn()
+}
+func (w *worker) Stop() {
+	os.Exit(-1)
+}
 
 //Start 启动controller
 func Start(store core.KVStore, cfg *core.Config, stopCh <-chan struct{}) {
@@ -15,11 +30,17 @@ func Start(store core.KVStore, cfg *core.Config, stopCh <-chan struct{}) {
 	}
 	svcc := newSvc(store)
 	nodecStopCh := make(chan struct{})
-	go nodec.runNodec(nodecStopCh)
 	go ingressc.run(nodecStopCh)
-	go certc.run()
-	go cronc.run(nodecStopCh)
-	go svcc.run()
+	log.Info("waiting a leader...")
+	leader := store.LeaderController("controller")
+	wfn := func() {
+		log.Info("runing as a leader")
+		go nodec.runNodec(nodecStopCh)
+		go certc.run()
+		go cronc.run(nodecStopCh)
+		go svcc.run()
+	}
+	leader.Register(&worker{wfn})
 	for {
 		select {
 		case <-stopCh:
