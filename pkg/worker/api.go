@@ -142,7 +142,7 @@ func (d *daemon) reg() error {
 	d.rpcServer.Register("endpoint.restart", api.EndpointRestart)
 	d.rpcServer.Register("endpoint.log", api.EndpointLog)
 	http.HandleFunc("/exec", d.exec)
-	http.HandleFunc("/log", d.clog)
+	http.HandleFunc("/clog", d.clog)
 	fmt.Printf("Start RPC server in :%d\n", d.node.Port)
 	return d.rpcServer.Listen()
 }
