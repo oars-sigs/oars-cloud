@@ -247,7 +247,7 @@ func (h *HijackedResponse) Read(p []byte) (n int, err error) {
 	return h.Reader.Read(p)
 }
 
-func (d *daemon) Exec(ctx context.Context, id string, cmd string) (core.ExecResp, error) {
+func (d *daemon) Exec(ctx context.Context, id string, cmd string, w, h uint) (core.ExecResp, error) {
 	opts := types.ExecConfig{
 		AttachStdin:  true,
 		AttachStdout: true,
@@ -260,6 +260,13 @@ func (d *daemon) Exec(ctx context.Context, id string, cmd string) (core.ExecResp
 	if err != nil {
 		return nil, err
 	}
+	if w == 0 {
+		d.client.ContainerExecResize(ctx, idResp.ID, types.ResizeOptions{
+			Height: h,
+			Width:  w,
+		})
+	}
+
 	resp, err := d.client.ContainerExecAttach(ctx, idResp.ID, types.ExecStartCheck{
 		Detach: false,
 		Tty:    true,

@@ -168,6 +168,35 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <!-- 确定操作 -->
+    <v-dialog v-model="preDialog" persistent max-width="290">
+      <v-card>
+        <v-card-title></v-card-title>
+        <v-card-text
+          >确定 <strong> {{actionParam.title}} </strong>服务‘<span style="color: red;">{{ actionParam.args.service }}_{{ actionParam.args.name }}</span>’?</v-card-text
+        >
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            text
+            @click="
+              preDialog = false;
+              initActionParam();
+            "
+            >取消</v-btn
+          >
+          <v-btn
+            color="red"
+            text
+            @click="
+              preDialog = false;
+              doAction();
+            "
+            >确定</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -194,13 +223,19 @@ export default {
           title: "重启",
           icon: "mdi-restart",
           color: "green",
-          key: "restart",
+          key: "pre_restart",
         },
         {
           title: "停止",
           icon: "mdi-stop",
           color: "red",
-          key: "stop",
+          key: "pre_stop",
+        },
+        {
+          title: "重建",
+          icon: "mdi-delete",
+          color: "red",
+          key: "pre_remove",
         },
         {
           title: "日志",
@@ -252,7 +287,6 @@ export default {
     this.listNamespace();
   },
   beforeDestroy() {
-      console.log("aaaaa")
       clearInterval(this.timer);
   },
   methods: {
@@ -304,6 +338,21 @@ export default {
     doAction: function () {
       let _that = this;
       switch (this.actionParam.key) {
+        case "pre_restart":
+          _that.actionParam.key = 'restart';
+          _that.actionParam.title = '重启';
+         _that.preDialog=true;
+          break;
+        case "pre_stop":
+          _that.actionParam.key = 'stop';
+          _that.actionParam.title = '停止';
+          _that.preDialog=true;
+          break;
+        case "pre_remove":
+          _that.actionParam.key = 'remove';
+          _that.actionParam.title = '重建';
+          _that.preDialog=true;
+          break;
         case "restart":
           _that.overlay = true;
           this.$call(
@@ -317,6 +366,15 @@ export default {
         case "stop":
           _that.overlay = true;
           this.$call("system.admin.endpoint.stop", this.actionParam.args).then(
+            () => {
+              _that.initActionParam();
+              _that.list();
+            }
+          );
+          break;
+        case "remove":
+          _that.overlay = true;
+          this.$call("system.admin.endpoint.remove", this.actionParam.args).then(
             () => {
               _that.initActionParam();
               _that.list();

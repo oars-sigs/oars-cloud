@@ -63,7 +63,7 @@ export default {
       this.term.scrollToBottom();
       let protocol = window.location.protocol == "https:" ? "wss" : "ws";
       let ws = new WebSocket(
-        `${protocol}://${window.location.host}/api/exec/${hostname}/${id}`
+        `${protocol}://${window.location.host}/api/exec/${hostname}/${id}?col=${width}&row=${height}`
       );
       this.ws = ws;
       this.ws.binaryType = "arraybuffer";

@@ -16,7 +16,7 @@ type ContainerRuntimeInterface interface {
 	Log(ctx context.Context, id, tail, since string) (string, error)
 	LogStream(ctx context.Context, id, tail, since string) (io.ReadCloser, error)
 	List(ctx context.Context, all bool, extra ...bool) ([]*Endpoint, error)
-	Exec(ctx context.Context, id string, cmd string) (ExecResp, error)
+	Exec(ctx context.Context, id string, cmd string, w, h uint) (ExecResp, error)
 	ImagePull(ctx context.Context, svc *ContainerService) error
 	Metrics(ctx context.Context, id string, labels map[string]string) (*ContainerMetrics, error)
 	CreateNetwork(ctx context.Context, name, driver, subnet string) error

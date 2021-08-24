@@ -300,7 +300,7 @@ func (c *client) LogStream(ctx context.Context, id, tail, since string) (io.Read
 	return nil, nil
 }
 
-func (c *client) Exec(ctx context.Context, id string, cmd string) (core.ExecResp, error) {
+func (c *client) Exec(ctx context.Context, id string, cmd string, w, h uint) (core.ExecResp, error) {
 	sid, err := c.ExecCreate(ctx, id, ExecConfig{
 		Command:      []string{cmd},
 		Tty:          true,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/websocket"
 	"github.com/oars-sigs/oars-cloud/core"
@@ -38,6 +39,19 @@ func (s *rpcServer) EndpointStop(args interface{}) *core.APIReply {
 		return e.InvalidParameterError(err)
 	}
 	err = s.d.Stop(context.Background(), endpoint.Status.ID)
+	if err != nil {
+		return e.InternalError(err)
+	}
+	return core.NewAPIReply(nil)
+}
+
+func (s *rpcServer) EndpointRemove(args interface{}) *core.APIReply {
+	var endpoint core.Endpoint
+	err := rpc.UnmarshalArgs(args, &endpoint)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	err = s.d.Remove(context.Background(), endpoint.Status.ID)
 	if err != nil {
 		return e.InternalError(err)
 	}
@@ -85,7 +99,12 @@ func (d *daemon) exec(w http.ResponseWriter, r *http.Request) {
 	if cmd == "" {
 		cmd = "sh"
 	}
-	resp, err := d.Exec(id, cmd)
+	col := r.FormValue("col")
+	row := r.FormValue("row")
+	width, _ := strconv.Atoi(col)
+	height, _ := strconv.Atoi(row)
+
+	resp, err := d.Exec(id, cmd, uint(width), uint(height))
 	if err != nil {
 		logrus.Error(err)
 		return

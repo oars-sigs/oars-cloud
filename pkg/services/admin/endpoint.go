@@ -23,6 +23,8 @@ func (s *service) regEndpoint(ctx context.Context, action string, args interface
 		return s.RestartEndPoint(args)
 	case "stop":
 		return s.StopEndPoint(args)
+	case "remove":
+		return s.RemoveEndPoint(args)
 	case "log":
 		return s.GetEndPointLog(args)
 	case "logstream":
@@ -125,6 +127,19 @@ func (s *service) StopEndPoint(args interface{}) *core.APIReply {
 	return s.rpcClient.Call(addr, "endpoint.stop", args)
 }
 
+func (s *service) RemoveEndPoint(args interface{}) *core.APIReply {
+	var endpoint core.Endpoint
+	err := unmarshalArgs(args, &endpoint)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	addr, err := s.getAddr(endpoint.Status.Node.Hostname)
+	if err != nil {
+		return e.InvalidParameterError(err)
+	}
+	return s.rpcClient.Call(addr, "endpoint.remove", args)
+}
+
 func (s *service) GetEndPointLog(args interface{}) *core.APIReply {
 	var opt core.EndpointLogOpt
 	err := unmarshalArgs(args, &opt)
@@ -181,13 +196,15 @@ func (s *service) ExecEndPoint(cc context.Context, args interface{}) *core.APIRe
 
 	hostname := ctx.Param("hostname")
 	id := ctx.Param("id")
+	col := ctx.Query("col")
+	row := ctx.Query("row")
 
 	addr, err := s.getAddr(hostname)
 	if err != nil {
 		return core.NewAPIError(err)
 	}
 
-	addr = "wss://" + addr + "/exec?id=" + id
+	addr = fmt.Sprintf("wss://%s/exec?id=%s&col=%s&row=%s", addr, id, col, row)
 	err = s.connExec(addr+"&cmd=bash", c)
 	if err != nil {
 		err = s.connExec(addr+"&cmd=sh", c)
@@ -195,7 +212,6 @@ func (s *service) ExecEndPoint(cc context.Context, args interface{}) *core.APIRe
 			return core.NewAPIError(err)
 		}
 	}
-	fmt.Println(addr)
 	return core.NewAPIReply("")
 }
 
