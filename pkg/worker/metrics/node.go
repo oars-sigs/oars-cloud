@@ -61,7 +61,7 @@ func (e *Exporter) setNodeMetrics(ch chan<- prometheus.Metric) {
 
 	}
 
-	ustat, err := disk.Usage("/")
+	ustat, err := disk.Usage("/host")
 	if err == nil {
 		diskLabel := append(labels, "/")
 		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeFileSystemTotal"], prometheus.GaugeValue, float64(ustat.Total), diskLabel...)
