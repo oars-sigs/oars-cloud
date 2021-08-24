@@ -53,7 +53,7 @@ type ContainerMetrics struct {
 func (e *Exporter) asyncRetrieveMetrics() ([]*core.ContainerMetrics, error) {
 	// Obtain a list of running containers only
 	// Docker stats API won't return stats for containers not in the running state
-	edps, err := e.cri.List(context.Background(), false)
+	edps, err := e.cri.List(context.Background(), false, true)
 	if err != nil {
 		logrus.Errorf("Error obtaining container listing: %v", err)
 		return nil, err

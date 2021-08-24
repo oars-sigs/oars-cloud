@@ -151,5 +151,31 @@ func Return() map[string]*prometheus.Desc {
 		"CPU load15 for the specified node",
 		labelsNode, nil,
 	)
+	labelNodeDisk := append(labelsNode, "path")
+	containerMetrics["nodeFileSystemTotal"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "filesystem", "total"),
+		"file system total for the specified node",
+		labelNodeDisk, nil,
+	)
+	containerMetrics["nodeFileSystemTotal"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "filesystem", "total"),
+		"file system total for the specified node",
+		labelNodeDisk, nil,
+	)
+	containerMetrics["nodeFileSystemUsed"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "filesystem", "used"),
+		"file system used for the specified node",
+		labelNodeDisk, nil,
+	)
+	containerMetrics["nodeFileSystemUsedPercent"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "filesystem", "used_percent"),
+		"file system used for the specified node",
+		labelNodeDisk, nil,
+	)
+	containerMetrics["nodeFileSystemFree"] = prometheus.NewDesc(
+		prometheus.BuildFQName("node", "filesystem", "free"),
+		"file system free for the specified node",
+		labelNodeDisk, nil,
+	)
 	return containerMetrics
 }

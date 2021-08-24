@@ -159,7 +159,7 @@ type containerInspectResp struct {
 }
 
 //List 容器列表
-func (c *client) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
+func (c *client) List(ctx context.Context, all bool, extra ...bool) ([]*core.Endpoint, error) {
 	res, err := c.Get(ctx, fmt.Sprintf("/v1.0.0/libpod/containers/json?all=%v", all))
 	if err != nil {
 		return nil, err

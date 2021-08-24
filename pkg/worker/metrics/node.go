@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -58,5 +59,14 @@ func (e *Exporter) setNodeMetrics(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad5"], prometheus.GaugeValue, load.Load5, labels...)
 		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeCpuLoad15"], prometheus.GaugeValue, load.Load15, labels...)
 
+	}
+
+	ustat, err := disk.Usage("/")
+	if err == nil {
+		diskLabel := append(labels, "/")
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeFileSystemTotal"], prometheus.GaugeValue, float64(ustat.Total), diskLabel...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeFileSystemUsed"], prometheus.GaugeValue, float64(ustat.Used), diskLabel...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeFileSystemUsedPercent"], prometheus.GaugeValue, ustat.UsedPercent, diskLabel...)
+		ch <- prometheus.MustNewConstMetric(e.containerMetrics["nodeFileSystemFree"], prometheus.GaugeValue, float64(ustat.Free), diskLabel...)
 	}
 }

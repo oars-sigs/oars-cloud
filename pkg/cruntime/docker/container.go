@@ -175,18 +175,24 @@ func (d *daemon) LogStream(ctx context.Context, id, tail, since string) (io.Read
 }
 
 //List 容器列表
-func (d *daemon) List(ctx context.Context, all bool) ([]*core.Endpoint, error) {
+func (d *daemon) List(ctx context.Context, all bool, extra ...bool) ([]*core.Endpoint, error) {
 	cs, err := d.client.ContainerList(context.Background(), types.ContainerListOptions{All: all})
 	if err != nil {
 		return nil, err
 	}
 	edps := make([]*core.Endpoint, 0)
 	for _, cn := range cs {
+		cname := strings.TrimPrefix(cn.Names[0], "/")
 		_, ok := cn.Labels[core.CreatorLabelKey]
 		if !ok {
-			continue
+			if len(extra) == 0 || !extra[0] {
+				continue
+			}
+			names := strings.Split(cname, "_")
+			if len(names) != 4 {
+				continue
+			}
 		}
-		cname := strings.TrimPrefix(cn.Names[0], "/")
 		edp := core.GetEndpointByContainerName(cname)
 		edp.Labels = cn.Labels
 		status := &core.EndpointStatus{
