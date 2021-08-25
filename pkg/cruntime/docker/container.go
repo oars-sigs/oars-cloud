@@ -260,19 +260,18 @@ func (d *daemon) Exec(ctx context.Context, id string, cmd string, w, h uint) (co
 	if err != nil {
 		return nil, err
 	}
-	if w != 0 {
-		d.client.ContainerExecResize(ctx, idResp.ID, types.ResizeOptions{
-			Height: h,
-			Width:  w,
-		})
-	}
-
 	resp, err := d.client.ContainerExecAttach(ctx, idResp.ID, types.ExecStartCheck{
 		Detach: false,
 		Tty:    true,
 	})
 	if err != nil {
 		return nil, err
+	}
+	if w != 0 {
+		d.client.ContainerExecResize(ctx, idResp.ID, types.ResizeOptions{
+			Height: h,
+			Width:  w,
+		})
 	}
 	return &HijackedResponse{
 		Conn:   resp.Conn,
