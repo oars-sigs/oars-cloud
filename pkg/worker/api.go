@@ -160,6 +160,7 @@ func (d *daemon) reg() error {
 	d.rpcServer.Register("endpoint.stop", api.EndpointStop)
 	d.rpcServer.Register("endpoint.restart", api.EndpointRestart)
 	d.rpcServer.Register("endpoint.log", api.EndpointLog)
+	d.rpcServer.Register("endpoint.remove", api.EndpointRemove)
 	http.HandleFunc("/exec", d.exec)
 	http.HandleFunc("/clog", d.clog)
 	fmt.Printf("Start RPC server in :%d\n", d.node.Port)
